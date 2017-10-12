@@ -11,10 +11,18 @@
 *******************************************************************************/
 
 #include <sys/wait.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <unistd.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <dirent.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <poll.h>
+
 
 /*
   Function Declarations for builtin shell commands:
