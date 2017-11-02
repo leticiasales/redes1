@@ -1,0 +1,14 @@
+Name        : Vamshi S
+Roll Num    : 201305591
+
+Readme:
+
+An attempt to mimic the behavior of the unix ls command with the options
+ -l : long listing
+ -t : in reverse time sort order
+ -S : Sort by size
+ -a : all
+ -d : directory
+ -r : Recursive
+
+
