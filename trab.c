@@ -57,15 +57,36 @@ int main(int argc, char const *argv[])
 	int left = 1;
 	int right = 1;
 	bloco meubloco;
+<<<<<<< HEAD
 	unsigned char tmp[4];
 
 	meubloco.size = organizer(0,s_size,'g');
 	meubloco.seq = organizer(0,s_seq,'h');
 	meubloco.type = organizer(0,s_type,'i');
 	meubloco.pair = organizer(0,s_pair,'j');
+=======
+	unsigned char *tmp;
+	unsigned char nd[5]; 
+	//printf("%8u, %c\n", init, init);
+	scanf("%s", nd);
+
+	meubloco.size = nd[0];
+ 	meubloco.seq = nd[1];
+	meubloco.type = nd[2];
+	meubloco.pair = nd[3];
+>>>>>>> 0acb30baa9d125cf6ab61bba90de7d9db7b83737
 
 	packet(tmp, meubloco.size, meubloco.seq, meubloco.type, meubloco.pair);
 
+<<<<<<< HEAD
+=======
+	printf(":: %d\n", dec_to_bin(organizer(0,s_seq,meubloco.seq)));
+
+	tmp = packet(meubloco.size, meubloco.seq, meubloco.type, meubloco.pair);
+
+	printf("%s\n", tmp);
+	
+>>>>>>> 0acb30baa9d125cf6ab61bba90de7d9db7b83737
 	printf("0 %u\n", dec_to_bin(tmp[0]));
 	printf("1 %u\n", dec_to_bin(tmp[1]));
 	printf("2 %u\n", dec_to_bin(tmp[2]));
