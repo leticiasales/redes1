@@ -70,9 +70,15 @@ int main(int argc, char const *argv[])
 	scanf("%d", &meubloco.type);
 	scanf("%d", &meubloco.pair);
 
+	meubloco.size = organizer(0,s_size,meubloco.size);
+	meubloco.seq = organizer(0,s_seq,meubloco.seq);
+	meubloco.type = organizer(0,s_type,meubloco.type);
+	meubloco.pair = organizer(0,s_pair,meubloco.pair);
+
 	printf(":: %d\n", dec_to_bin(organizer(0,s_seq,meubloco.seq)));
 	
-	tmp = packet(organizer(0,s_size,meubloco.size), organizer(0,s_seq,meubloco.seq), organizer(0,s_type,meubloco.type), organizer(0,s_pair,meubloco.pair));
+	tmp = packet(meubloco.size, meubloco.seq, meubloco.type, meubloco.pair);
+	
 	printf("0 %u\n",tmp[0]);
 	printf("1 %u\n",tmp[1]);
 	printf("2 %u\n",tmp[2]);
