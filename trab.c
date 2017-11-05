@@ -16,7 +16,6 @@ struct bloco
 	unsigned char size;
 	unsigned char seq;
 	unsigned char type;
-	//unsigned char* data;
 	unsigned char pair;
 };
 
@@ -35,24 +34,27 @@ unsigned int dec_to_bin(int n)
 
 unsigned char organizer(int left, int right, unsigned char byte)
 {
-	if(left) return(byte>>(7-left));
-	unsigned char tmp = byte<<(9-right);
-	return tmp>>(9-right);
+	printf("%d, %d, %u\n", left, right, dec_to_bin(byte));
+	if(left) {
+		printf("%u\n", dec_to_bin(byte>>(8-left)));
+		return(byte>>(8-left));
+	}
+	unsigned char tmp = byte<<(7-right);
+	printf("%u\n", dec_to_bin(tmp));
+	printf("%u\n", dec_to_bin(tmp>>(7-right)));
+	return tmp>>(7-right);
 }
 
-unsigned int *packet(char size, char seq, char type, char pair)
+unsigned char *packet(unsigned char size, unsigned char seq, unsigned char type, unsigned char pair)
 {
 	printf("%d, %d, %d, %d\n", dec_to_bin(size), dec_to_bin(seq), dec_to_bin(type), dec_to_bin(pair));
 	unsigned int tmp[4];
 	tmp[0] = init;
 	tmp[1] = size << 3;
 	tmp[1] |= organizer(3, 0, seq);
-	printf("tmp[1] %u, %c\n", dec_to_bin(tmp[1]), tmp[1]);
 	tmp[2] = organizer(0, 3, seq)<<5;
 	tmp[2] |= organizer(0, 5, type);
-	printf("tmp[2] %u, %c\n", dec_to_bin(tmp[2]), tmp[2]);
 	tmp[3] = pair;
-	printf("tmp[3] %u, %c\n", dec_to_bin(tmp[3]), tmp[3]);
 	return tmp;
 }
 
@@ -62,13 +64,14 @@ int main(int argc, char const *argv[])
 	int right = 1;
 	bloco meubloco;
 	unsigned char *tmp;
-	unsigned char nd; 
+	unsigned char nd[5]; 
 	//printf("%8u, %c\n", init, init);
+	scanf("%s", nd);
 
-	scanf("%d", &meubloco.size);
-	scanf("%d", &meubloco.seq);
-	scanf("%d", &meubloco.type);
-	scanf("%d", &meubloco.pair);
+	meubloco.size = nd[0];
+ 	meubloco.seq = nd[1];
+	meubloco.type = nd[2];
+	meubloco.pair = nd[3];
 
 	meubloco.size = organizer(0,s_size,meubloco.size);
 	meubloco.seq = organizer(0,s_seq,meubloco.seq);
@@ -76,13 +79,15 @@ int main(int argc, char const *argv[])
 	meubloco.pair = organizer(0,s_pair,meubloco.pair);
 
 	printf(":: %d\n", dec_to_bin(organizer(0,s_seq,meubloco.seq)));
-	
+
 	tmp = packet(meubloco.size, meubloco.seq, meubloco.type, meubloco.pair);
+
+	printf("%s\n", tmp);
 	
-	printf("0 %u\n",tmp[0]);
-	printf("1 %u\n",tmp[1]);
-	printf("2 %u\n",tmp[2]);
-	printf("3 %u\n",tmp[3]);
+	printf("0 %u\n", dec_to_bin(tmp[0]));
+	printf("1 %u\n", dec_to_bin(tmp[1]));
+	printf("2 %u\n", dec_to_bin(tmp[2]));
+	printf("3 %u\n", dec_to_bin(tmp[3]));
 	/*
 	scanf("%c", &teste);
 	while((left+right)!=0) {
