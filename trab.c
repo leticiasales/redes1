@@ -21,7 +21,7 @@ struct bloco
 
 unsigned int dec_to_bin(int n)
 {
-	int remainder, i = 1; 
+	int remainder, i = 1;
 	unsigned int binary = 0;
 	while(n != 0) {
 		remainder = n%2;
@@ -47,7 +47,7 @@ void packet(unsigned char ret[4], unsigned char size, unsigned char seq, unsigne
 	ret[0] = init;
 	ret[1] = size << 3;
 	ret[1] |= organizer(5, 0, seq);
-	ret[2] = organizer(0, 3, seq);	
+	ret[2] = organizer(0, 3, seq);
 	ret[2] |= organizer(0, 5, type);
 	ret[3] = pair;
 }
@@ -66,12 +66,10 @@ int main(int argc, char const *argv[])
 
 	packet(tmp, meubloco.size, meubloco.seq, meubloco.type, meubloco.pair);
 
-	printf("%08.0u.", dec_to_bin(tmp[0]));
-	printf("%08.0u.", dec_to_bin(tmp[1]));
-	printf("%08.0u.", dec_to_bin(tmp[2]));
-	printf("%08.0u\n", dec_to_bin(tmp[3]));
-
-	
+	printf("%08u.", dec_to_bin(tmp[0]));
+	printf("%08u.", dec_to_bin(tmp[1]));
+	printf("%08u.", dec_to_bin(tmp[2]));
+	printf("%08u\n", dec_to_bin(tmp[3]));
 
 	/*
 	scanf("%c", &teste);
