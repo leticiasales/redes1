@@ -3,6 +3,10 @@
 import socket
 import sys
 
+
+def function():
+	pass
+
 def server():
 	# Create a TCP/IP socket
 	sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)

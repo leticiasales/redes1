@@ -54,13 +54,13 @@ def decompress(compressed):
         w = entry
     return result.getvalue()
  
- 
-# How to use:
+
+file = open(“testfile.txt”, “w”)
 tocompress = 'TOBEORNOTTOBEORTOBEORNOT' #lerarquivoaqui
 print('in: ' + tocompress)
 compressed = compress(tocompress)
-# print (compressed)
-for x in compress(tocompress):
-    print(chr(x % 255))
+file.write(compressed)
+# for x in compress(tocompress):
+#     print(chr(x % 255))
 decompressed = decompress(compressed)
 print ('out: ' + decompressed)
