@@ -14,11 +14,10 @@ ips = [('localhost',4567),('localhost',4568),('localhost',4569),('localhost',457
 const = 4096
 bastao = False
 meunumero = False
+
 tipojogada = 0
 tipobastao = 1
 tipoaviso = 2
-
-
 
 def conf_client():
 	global meunumero
@@ -40,25 +39,26 @@ def conf_server():
 	return sock
 
 def tem_bastao(clisock, server_address):
-	global bastao, meunumero, first
+	global bastao, meunumero, first, tipobastao
 	if (not first):
 		data, address = sock.recvfrom(const)
-		sender = int(data[-2])
-		print sender		
-		print meunumero
+		sender = int(data[4])
+		# print ('enviado por "%d"' % sender)		
+		# print ('recebido por "%d"' % meunumero)	
 		if (meunumero == sender):
 			bastao = False
 			first = True
-			message = (tipobastao, meunumero)
+			destino = (meunumero + 1) % len(ips)
+			message = (tipobastao, meunumero, destino)
 			sent = clisock.sendto(str(message), server_address)
 			return
-	else: 
-		print ('first')
-		first = False
-	targ = raw_input('Qual mapa deseja atacar? ')
-	xy = raw_input('Qual coordenada desse mapa? ')
+	# print ('first')
+	first = False	
+	targ = int(raw_input('Qual mapa deseja atacar? '))
+	xy = int(raw_input('Qual coordenada desse mapa? '))
 
-	message = (0, targ, xy, meunumero)
+	message = (tipojogada, meunumero, targ, xy, 0)
+
 	# Send data
 	# print ('sending "%s"' % (message,))
 	sent = clisock.sendto(str(message), server_address)
@@ -90,22 +90,31 @@ while (True):
 	if (bastao):
 		tem_bastao(clisock, server_address)
 	else: 
-		print ('\nwaiting to receive message')
+		# print ('\nwaiting to receive message')
 		data, address = sock.recvfrom(const)
-
-		print ('received %s bytes from %s' % (len(data), address))
+		# print ('received %s bytes from %s' % (len(data), address))
 		# print data
-
 		if data:
-			print data[1:-1]
-			# if (meunumero == targ):
-			# 	print 'OUCH'
-			passa_pra_frente(clisock, server_address, data)
-			# if (meunumero == (nextbastao % len(ips))):
-				# bastao = True
-			# @@aqui vai verificar o mapa e responder se acertou
-			sent = sock.sendto(data, address)
-			print ('sent %s bytes back to %s' % (sent, address))
+			# print data
+			tipo = int(data[1])
+			# print tipo
+			origem = int(data[4])
+			# print origem
+			destino = int(data[7])
+			# print destino
+			# if (targ == origem):
+				# print 'OUCH'
+			if (tipo == tipojogada):
+				if (destino==meunumero):
+				# @@aqui vai verificar o mapa e responder se acertou
+				passa_pra_frente(clisock, server_address, data)
+			if (tipo==tipobastao):
+				# print destino
+				# print meunumero
+				if (destino==meunumero):
+					bastao = True
+			# sent = sock.sendto(data, address)
+			# print ('sent %s bytes back to %s' % (sent, address))
 print ('closing clisocket')
 clisock.close()
 sys.exit(0)
