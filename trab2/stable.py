@@ -18,6 +18,7 @@ meunumero = False
 tipojogada = 0
 tipobastao = 1
 tipoaviso = 2
+dead = {}
 
 def conf_client():
 	global meunumero
@@ -97,9 +98,9 @@ print(" 01 02 03 04 05 \n 06 07 08 09 10 \n 11 12 13 14 15 \n 16 17 18 19 20 \n 
 # for x in range(25):
 	# print ('0' + str(x))[-2:],
 
-meumapa = [('0' + str(i))[-2:] for i in range(25)]
+meumapa = [('0' + str(i))[-2:] for i in range(26)]
 
-nav1, nav2 = (raw_input("Digite dois numeros distintos de 0 a %d para posicionar seus navios no mapa:\n" % (map_size*map_size)),raw_input())
+nav1, nav2 = (raw_input("Digite dois numeros distintos de 0 a %d para posicionar seus submarinos no mapa:\n" % (map_size*map_size)),raw_input())
 
 meumapa[int(nav1)] = 1
 meumapa[int(nav2)] = 1
@@ -108,16 +109,11 @@ first = True
 bastao = (meunumero == 0)
 clisock, server_address = conf_client()
 sock = conf_server()
-navios = 2
-deads = 0
+navios = 2 #chuncho
 
-while (deads < 3):
-	if (bastao):
-		# print navios
-		if (navios == 0):
-			passa_o_bastao()
-		else:
-			tem_bastao(clisock, server_address)
+while (len(dead)<3):
+	if (bastao and (navios > 0)):
+		tem_bastao(clisock, server_address)
 	else: 
 		# print ('\nwaiting to receive message')
 		data, address = sock.recvfrom(const)
@@ -143,7 +139,7 @@ while (deads < 3):
 						navios-=1
 						meumapa[coord] = 0
 						if (navios == 0):
-							print ('Todos seus navios afundaram. Aguarde o fim do jogo.')
+							print ('Todos seus submarinos afundaram. Aguarde o fim do jogo.')
 				passa_pra_frente(clisock, server_address, data)
 
 			if (tipo==tipobastao):
@@ -154,13 +150,19 @@ while (deads < 3):
 					if (navios == 0):
 						message = (tipoaviso, meunumero, meunumero)
 						sent = clisock.sendto(str(message), server_address)
-			if (tipo == tipoaviso)
+			if (tipo == tipoaviso):
+				# print ('fui avisado')
+				dead[destino] = True	
 				if (destino==meunumero):
 					passa_o_bastao()
 				else:
-					deads +- 1
+					passa_pra_frente(clisock, server_address, data)
 			# sent = sock.sendto(data, address)
 			# print ('sent %s bytes back to %s' % (sent, address))
-print ('closing clisocket')
+# print ('closing clisocket')
+if (not (meunumero in dead)):
+	print ('Parabéns! Você derrubou todos os submarinos inimigos.')
+else:
+	print ('Fim de jogo.')
 clisock.close()
 sys.exit(0)
