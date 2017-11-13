@@ -6,8 +6,8 @@ import sys
 from struct import *
 
 #defstructmensagem
-#ou eh "to o bastao" (cod)
-#ou eh "passa pra frente" (cod, alvo, coor, alvoleu, acertou/errou)
+#or eh "to o bastao" (cod)
+#or eh "passa pra frente" (cod, alvo, coor, alvoleu, acertor/error)
 
 map_size = 5
 ips = [('localhost',4567),('localhost',4568),('localhost',4569),('localhost',4570)]
@@ -49,8 +49,8 @@ def tem_bastao(clisock, server_address):
 		# print ('enviado por "%d"' % sender)		
 		# print ('recebido por "%d"' % meunumero)	
 		if (meunumero == sender):
-			acertou = message[4]
-			if (acertou == 'True'):
+			acertor = message[4]
+			if (acertor == 'True'):
 				print('Voce destruiu um navio inimigo. Aguarde sua proxima jogada.')
 			else:
 				print ('Ataque enviado. Aguarde a sua vez.')
@@ -70,7 +70,7 @@ def tem_bastao(clisock, server_address):
 
 	# Receive response
 	# print ('waiting to receive')
-	# @@timeout tem_bastao(clisock, server_address)
+	# @@timeort tem_bastao(clisock, server_address)
 	# data, server = clisock.recvfrom(const)
 	# print ('received "%s"' % data)
 
@@ -133,7 +133,7 @@ while (len(dead)<3):
 				if (destino==meunumero):
 					coord = int(message[3])
 					# print coord
-					# @@aqui vai verificar o mapa e responder se acertou
+					# @@aqui vai verificar o mapa e responder se acertor
 					if (meumapa[coord] == 1):
 						print 'OUCH'
 						navios-=1
@@ -161,7 +161,7 @@ while (len(dead)<3):
 			# print ('sent %s bytes back to %s' % (sent, address))
 # print ('closing clisocket')
 if (not (meunumero in dead)):
-	print ('Parabéns! Você derrubou todos os submarinos inimigos.')
+	print ('Parabens! Voce derrubor todos os submarinos inimigos.')
 else:
 	print ('Fim de jogo.')
 clisock.close()

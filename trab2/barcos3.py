@@ -1,13 +1,15 @@
 # https://pymotw.com/2/socket/udp.html
 
-import socket
 import json
 import sys
+import select
+import socket
 from struct import *
 
+
 #defstructmensagem
-#ou eh "to o bastao" (cod)
-#ou eh "passa pra frente" (cod, alvo, coor, alvoleu, acertou/errou)
+#or eh "to o bastao" (cod)
+#or eh "passa pra frente" (cod, alvo, coor, alvoleu, acertor/error)
 
 map_size = 5
 ips = [('localhost',4567),('localhost',4568),('localhost',4569),('localhost',4570)]
@@ -43,14 +45,21 @@ def conf_server():
 def tem_bastao(clisock, server_address):
 	global bastao, meunumero, first, tipobastao
 	if (not first):
-		data, address = sock.recvfrom(const)
+		# set timeout 5 second
+		clisock.settimeout(1)
+
+		try:
+			data, address = sock.recvfrom(const)
+		except:
+		   	print("Timeout!!! Try again...")
+
 		message = data[1:-1].split(',')
 		sender = int(message[1])
 		# print ('enviado por "%d"' % sender)		
 		# print ('recebido por "%d"' % meunumero)	
 		if (meunumero == sender):
-			acertou = message[4]
-			if (acertou == 'True'):
+			acertor = message[4]
+			if (acertor == 'True'):
 				print('Voce destruiu um navio inimigo. Aguarde sua proxima jogada.')
 			else:
 				print ('Ataque enviado. Aguarde a sua vez.')
@@ -67,10 +76,11 @@ def tem_bastao(clisock, server_address):
 	# Send data
 	# print ('sending "%s"' % (message,))
 	sent = clisock.sendto(str(message), server_address)
+	print ('enviei')
 
 	# Receive response
 	# print ('waiting to receive')
-	# @@timeout tem_bastao(clisock, server_address)
+	# @@timeort tem_bastao(clisock, server_address)
 	# data, server = clisock.recvfrom(const)
 	# print ('received "%s"' % data)
 
@@ -105,15 +115,24 @@ meumapa = [('0' + str(i))[-2:] for i in range(26)]
 #meumapa[int(nav1)] = 1
 #meumapa[int(nav2)] = 1
 
-a, b, c, d, e, f = (raw_input("Escolha duas vezes três casas adjacentes de 0 a %d para inserir os dois barcos no mapa \n" % (map_size*map_size)),raw_input(),raw_input(),raw_input(),raw_input(),raw_input())
-while ((d==a) ou (d==b) ou (d==c) ou (e==a) ou (e==b) ou (e==c) ou (f==a) ou (f==b) ou (f==c) ou (b!=a+1 e b!=a-1 e b!=a+5 e b!=a-5) ou (c!=b+1 e c!=b-1 e c!=b+5 e c!= b-5) ou (e!=d+1 e e!=d-1 e e!=d+5 e e!=d-5) ou (f!=e+1 e f!=e-1 e f!=e+5 e f!=e-5)):
-		a, b, c, d, e, f = (raw_input("Coordenadas inválidas, escolha novamente \n" % (map_size*map_size)),raw_input(),raw_input(),raw_input(),raw_input(),raw_input());
-meumapa[int(a)] = 1
-meumapa[int(b)] = 1
-meumapa[int(c)] = 1
-meumapa[int(d)] = 1
-meumapa[int(e)] = 1
-meumapa[int(f)] = 1
+# print "Escolha duas vezes tres casas adjacentes de 0 a %d para inserir os dois barcos no mapa \n" % (map_size*map_size)
+
+# a, b, c, d, e, f = int(raw_input()), int(raw_input()), int(raw_input()), int(raw_input()), int(raw_input()), int(raw_input())
+# while ((d==a) or (d==b) or (d==c) or (e==a) or (e==b) or (e==c) or (f==a) or (f==b) or (f==c) or (b!=a+1 and b!=a-1 and b!=a+5 and b!=a-5) or (c!=b+1 and c!=b-1 and c!=b+5 and c!= b-5) or (e!=d+1 and e!=d-1 and e!=d+5 and e!=d-5) or (f!=e+1 and f!=e-1 and f!=e+5 and f!=e-5)):
+# 	print ("Coordenadas invalidas, escolha novamente")
+# 	a, b, c, d, e, f = int(raw_input()), int(raw_input()), int(raw_input()), int(raw_input()), int(raw_input()), int(raw_input())
+# meumapa[int(a)] = 1
+# meumapa[int(b)] = 1
+# meumapa[int(c)] = 1
+# meumapa[int(d)] = 1
+# meumapa[int(e)] = 1
+# meumapa[int(f)] = 1
+
+nav1, nav2 = (raw_input("Digite dois numeros distintos de 0 a %d para posicionar seus submarinos no mapa:\n" % (map_size*map_size)),raw_input())
+
+meumapa[int(nav1)] = 1
+meumapa[int(nav2)] = 1
+
 
 first = True
 bastao = (meunumero == 0)
@@ -143,7 +162,7 @@ while (len(dead)<3):
 				if (destino==meunumero):
 					coord = int(message[3])
 					# print coord
-					# @@aqui vai verificar o mapa e responder se acertou
+					# @@aqui vai verificar o mapa and responder se acertor
 					if (meumapa[coord] == 1):
 						print 'OUCH'
 						navios-=1
@@ -171,7 +190,7 @@ while (len(dead)<3):
 			# print ('sent %s bytes back to %s' % (sent, address))
 # print ('closing clisocket')
 if (not (meunumero in dead)):
-	print ('Parabéns! Você derrubou todos os submarinos inimigos.')
+	print ('Parabens! Voce derrubor todos os submarinos inimigos.')
 else:
 	print ('Fim de jogo.')
 clisock.close()
