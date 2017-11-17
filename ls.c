@@ -17,8 +17,8 @@
     // Find the column width of terminal 
     // We will make use of this in part-II  
     // Of this article. 
-    struct winsize w; 
-    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w); 
+    // struct winsize w; 
+    // ioctl(STDOUT_FILENO, TIOCGWINSZ, &w); 
   
     curr_dir = getenv("PWD"); 
     if(NULL == curr_dir) 

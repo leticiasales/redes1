@@ -1,14 +1,12 @@
-/***************************************************************************//**
+/***************************************************************************
 
   @file         main.c
-
   @author       Stephen Brennan
-
   @date         Thursday,  8 January 2015
-
   @brief        LSH (Libstephen SHell)
 
-*******************************************************************************/
+  @adapted by Leticia Sales
+****************************************************************************/
 
 #include <sys/wait.h>
 #include <sys/types.h>
@@ -23,10 +21,80 @@
 #include <errno.h>
 #include <poll.h>
 
+const int s_init = 8;
+const int s_size = 5;
+const int s_seq = 6;
+const int s_type = 5;
+const int s_pair = 8;
+
+const unsigned char init = 0x7E;
+
+typedef struct bloco bloco;
+
+struct bloco
+{
+  unsigned char size;
+  unsigned char seq;
+  unsigned char type;
+  unsigned char pair;
+};
+
+unsigned int dec_to_bin(int n)
+{
+  int remainder, i = 1;
+  unsigned int binary = 0;
+  while(n != 0) {
+    remainder = n%2;
+    n = n/2;
+    binary= binary + (remainder*i);
+    i = i*10;
+  }
+  return binary;
+}
+
+unsigned char organizer(int left, int right, unsigned char byte)
+{
+  // printf("org: %d, %d, %u\n", left, right, dec_to_bin(byte));
+  if(right == 0)
+    return(byte>>(8-left));
+  unsigned char tmp = byte<<(8-right);
+  return tmp>>(8-right);
+}
+
+void packet(unsigned char ret[4], unsigned char size, unsigned char seq, unsigned char type, unsigned char pair)
+{
+  // printf("packet: %d, %d, %d, %d\n", dec_to_bin(size), dec_to_bin(seq), dec_to_bin(type), dec_to_bin(pair));
+  ret[0] = init;
+  ret[1] = size << 3;
+  ret[1] |= organizer(5, 0, seq);
+  ret[2] = organizer(0, 3, seq);
+  ret[2] |= organizer(0, 5, type);
+  ret[3] = pair;
+}
+
+int topack()
+{
+  bloco meubloco;
+  unsigned char tmp[4];
+
+  meubloco.size = organizer(0,s_size,'g');
+  meubloco.seq = organizer(0,s_seq,'h');
+  meubloco.type = organizer(0,s_type,'i');
+  meubloco.pair = organizer(0,s_pair,'j');
+
+  packet(tmp, meubloco.size, meubloco.seq, meubloco.type, meubloco.pair);
+
+  printf("%08u.", dec_to_bin(tmp[0]));
+  printf("%08u.", dec_to_bin(tmp[1]));
+  printf("%08u.", dec_to_bin(tmp[2]));
+  printf("%08u\n", dec_to_bin(tmp[3]));
+}
 
 /*
   Function Declarations for builtin shell commands:
  */
+
+int tish_ls();
 int lsh_cd(char **args);
 int lsh_help(char **args);
 int lsh_exit(char **args);
@@ -34,13 +102,16 @@ int lsh_exit(char **args);
 /*
   List of builtin commands, followed by their corresponding functions.
  */
+
 char *builtin_str[] = {
+  "ls",
   "cd",
   "help",
   "exit"
 };
 
 int (*builtin_func[]) (char **) = {
+  &tish_ls,
   &lsh_cd,
   &lsh_help,
   &lsh_exit
@@ -53,6 +124,43 @@ int lsh_num_builtins() {
 /*
   Builtin function implementations.
 */
+
+int tish_ls(char **args)
+{
+  char *curr_dir = NULL; 
+  DIR *dp = NULL; 
+  struct dirent *dptr = NULL; 
+  unsigned int count = 0; 
+
+  // Find the column width of terminal 
+  // We will make use of this in part-II  
+  // Of this article. 
+  // struct winsize w; 
+  // ioctl(STDOUT_FILENO, TIOCGWINSZ, &w); 
+
+  curr_dir = getenv("PWD"); 
+  if(NULL == curr_dir) 
+  { 
+      return 0; 
+  } 
+   
+  dp = opendir((const char*)curr_dir);    
+  if(NULL == dp) 
+  { 
+    return 0; 
+  } 
+ 
+  for(count = 0; NULL != (dptr = readdir(dp)); count++) 
+  { 
+      if(dptr->d_name[0] != '.') 
+      { 
+          printf("%s     ",dptr->d_name); 
+      } 
+  } 
+  printf("\n"); 
+
+  return 1;
+}
 
 /**
    @brief Bultin command: change directory.
@@ -151,7 +259,8 @@ int lsh_execute(char **args)
     }
   }
 
-  return lsh_launch(args);
+  return 0;
+  //return lsh_launch(args);
 }
 
 #define LSH_RL_BUFSIZE 1024

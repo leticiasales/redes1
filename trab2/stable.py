@@ -1,4 +1,4 @@
-# https://pymotw.com/2/socket/udp.html
+# -*- coding: utf-8 -*-
 
 import socket
 import json
@@ -14,6 +14,8 @@ ips = [('localhost',4567),('localhost',4568),('localhost',4569),('localhost',457
 const = 4096
 bastao = False
 meunumero = False
+
+maxtimeout = 5
 
 tipojogada = 0
 tipobastao = 1
@@ -41,9 +43,21 @@ def conf_server():
 	return sock
 
 def tem_bastao(clisock, server_address):
-	global bastao, meunumero, first, tipobastao
+	global bastao, meunumero, first, tipobastao, maxtimeout
 	if (not first):
-		data, address = sock.recvfrom(const)
+		try:
+			# set timeout 5 second
+			socket.settimeout(10)
+			data, address = sock.recvfrom(const)
+		except:
+		   	print("Timeout! Tentando novamente...")
+		   	if (maxtimeout > 0):
+				maxtimeout-=1
+				tem_bastao(clisock, server_address)
+			else:
+				print('Cheque sua conexão e tente novamente')
+				clisock.close()
+				sys.exit(0)
 		message = data[1:-1].split(',')
 		sender = int(message[1])
 		# print ('enviado por "%d"' % sender)		
@@ -51,9 +65,9 @@ def tem_bastao(clisock, server_address):
 		if (meunumero == sender):
 			acertor = message[4]
 			if (acertor == 'True'):
-				print('Voce destruiu um navio inimigo. Aguarde sua proxima jogada.')
+				print('Você destruiu um navio inimigo. Aguarde sua próxima jogada.')
 			else:
-				print ('Ataque enviado. Aguarde a sua vez.')
+				print ('Ataque enviado. Você atirou no vazio do oceano. Aguarde a sua vez.')
 			passa_o_bastao()
 			return
 	# print ('first')
@@ -87,12 +101,12 @@ def passa_o_bastao():
 	sent = clisock.sendto(str(message), server_address)
 
 if (len(sys.argv) != 2):
-	print("Por favor, digite o numero informado a voce pelo administrador")
+	print("Por favor, digite o número informado a você pelo administrador")
 	sys.exit(0)
 
 meunumero = int(sys.argv[1])
 
-print("Ola! Bem-vindo ao jogo batalha naval!\nConheca o seu mapa:\n")
+print("Olá! Bem-vindo ao jogo batalha naval!\nConheça o seu mapa:\n")
 print(" 01 02 03 04 05 \n 06 07 08 09 10 \n 11 12 13 14 15 \n 16 17 18 19 20 \n 21 22 23 24 25 \n")
 
 # for x in range(25):
@@ -161,7 +175,7 @@ while (len(dead)<3):
 			# print ('sent %s bytes back to %s' % (sent, address))
 # print ('closing clisocket')
 if (not (meunumero in dead)):
-	print ('Parabens! Voce derrubor todos os submarinos inimigos.')
+	print ('Parabéns! Você derrubou todos os submarinos inimigos.')
 else:
 	print ('Fim de jogo.')
 clisock.close()
