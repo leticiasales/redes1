@@ -55,7 +55,7 @@ def tem_bastao(clisock, server_address):
 				maxtimeout-=1
 				tem_bastao(clisock, server_address)
 			else:
-				print('Cheque sua conexão e tente novamente')
+				print('Cheque sua conexao e tente novamente')
 				clisock.close()
 				sys.exit(0)
 		message = data[1:-1].split(',')
@@ -65,9 +65,9 @@ def tem_bastao(clisock, server_address):
 		if (meunumero == sender):
 			acertor = message[4]
 			if (acertor == 'True'):
-				print('Você destruiu um navio inimigo. Aguarde sua próxima jogada.')
+				print('Voce destruiu um navio inimigo. Aguarde sua proxima jogada.')
 			else:
-				print ('Ataque enviado. Você atirou no vazio do oceano. Aguarde a sua vez.')
+				print ('Ataque enviado. Voce atirou no vazio do oceano. Aguarde a sua vez.')
 			passa_o_bastao()
 			return
 		message = data[1:-1].split(',')
