@@ -12,7 +12,7 @@ from struct import *
 #or eh "passa pra frente" (cod, alvo, coor, alvoleu, acertor/error)
 
 map_size = 5
-ips = [('localhost',4567),('localhost',4568),('localhost',4569),('localhost',4570)]
+ips = [('10.254.225.12',4567),('10.254.225.13',4568),('10.254.225.14',4569),('10.254.225.16',4570)]
 const = 4096
 bastao = False
 meunumero = False
@@ -132,23 +132,18 @@ meumapa = [('0' + str(i))[-2:] for i in range(26)]
 #meumapa[int(nav1)] = 1
 #meumapa[int(nav2)] = 1
 
-# print "Escolha duas vezes tres casas adjacentes de 0 a %d para inserir os dois barcos no mapa \n" % (map_size*map_size)
+print "Escolha duas vezes tres casas adjacentes de 0 a %d para inserir os dois barcos no mapa \n" % (map_size*map_size)
 
-# a, b, c, d, e, f = int(raw_input()), int(raw_input()), int(raw_input()), int(raw_input()), int(raw_input()), int(raw_input())
-# while ((d==a) or (d==b) or (d==c) or (e==a) or (e==b) or (e==c) or (f==a) or (f==b) or (f==c) or (b!=a+1 and b!=a-1 and b!=a+5 and b!=a-5) or (c!=b+1 and c!=b-1 and c!=b+5 and c!= b-5) or (e!=d+1 and e!=d-1 and e!=d+5 and e!=d-5) or (f!=e+1 and f!=e-1 and f!=e+5 and f!=e-5)):
-# 	print ("Coordenadas invalidas, escolha novamente")
-# 	a, b, c, d, e, f = int(raw_input()), int(raw_input()), int(raw_input()), int(raw_input()), int(raw_input()), int(raw_input())
-# meumapa[int(a)] = 1
-# meumapa[int(b)] = 1
-# meumapa[int(c)] = 1
-# meumapa[int(d)] = 1
-# meumapa[int(e)] = 1
-# meumapa[int(f)] = 1
-
-nav1, nav2 = (raw_input("Digite dois numeros distintos de 0 a %d para posicionar seus submarinos no mapa:\n" % (map_size*map_size)),raw_input())
-
-meumapa[int(nav1)] = 1
-meumapa[int(nav2)] = 1
+a, b, c, d, e, f = int(raw_input()), int(raw_input()), int(raw_input()), int(raw_input()), int(raw_input()), int(raw_input())
+while ((d==a) or (d==b) or (d==c) or (e==a) or (e==b) or (e==c) or (f==a) or (f==b) or (f==c) or (b!=a+1 and b!=a-1 and b!=a+5 and b!=a-5) or (c!=b+1 and c!=b-1 and c!=b+5 and c!= b-5) or (e!=d+1 and e!=d-1 and e!=d+5 and e!=d-5) or (f!=e+1 and f!=e-1 and f!=e+5 and f!=e-5)):
+	print ("Coordenadas invalidas, escolha novamente")
+	a, b, c, d, e, f = int(raw_input()), int(raw_input()), int(raw_input()), int(raw_input()), int(raw_input()), int(raw_input())
+meumapa[int(a)] = 1
+meumapa[int(b)] = 1
+meumapa[int(c)] = 1
+meumapa[int(d)] = 1
+meumapa[int(e)] = 1
+meumapa[int(f)] = 1
 
 
 first = True
