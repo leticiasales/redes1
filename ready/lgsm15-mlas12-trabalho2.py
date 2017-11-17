@@ -12,7 +12,7 @@ from struct import *
 #or eh "passa pra frente" (cod, alvo, coor, alvoleu, acertor/error)
 
 map_size = 5
-ips = [('10.254.225.12',4567),('10.254.225.13',4568),('10.254.225.14',4569),('10.254.225.16',4570)]
+ips = [('10.254.225.12',8888),('10.254.225.13',8888),('10.254.225.14',8888),('10.254.225.16',8888)]
 const = 4096
 bastao = False
 meunumero = False
@@ -93,7 +93,7 @@ def tem_bastao(clisock, server_address):
 	# Send data
 	# print ('sending "%s"' % (message,))
 	sent = clisock.sendto(str(message), server_address)
-	print ('enviei')
+	print ('Jogada enviada')
 
 	# Receive response
 	# print ('waiting to receive')
