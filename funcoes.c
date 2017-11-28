@@ -81,65 +81,10 @@ int abrirRawSocket(char *interface){
 	return rsocket;
 }
 
-void criaMensagem(uint8_t *mensagem, uint8_t *buffer, uint8_t tamanho, uint8_t sequencia, uint8_t tipo) {
-/*	Protocolo:
-
-	Delimitador de inicio = 8 bits; 1
-	Tamanho = 6 bits; 1
-	Sequencia = 4 bits;
-	Tipo = 6 bits; 1
-	Mensagem = tamanho bits;
-	Paridade = 8 bits; 1
-*/
-	buffer[0] = INICIO; // delimitador - 8 bits (não é necessário deslocar) 8
-
-
-	buffer[1] = tamanho << 2; // tamanho - 6 bits (desloca-se para a esquerda 2 bits); 14
-	buffer[1] |= sequencia >> 2; // tamanho - 4 bits 18
-
-	buffer[2] = sequencia << 6;
-	buffer[2] |= tipo;
-
-	int i;
-	for(i=0; i<tamanho; i++)
-		buffer[3+i] = mensagem[i];
-
-	int j;
-	i = tamanho + 3;
-	buffer[i]=0; //paridade vertical
-	for (j=1; j<i; j++) {
-		buffer[i] ^= buffer[j];
-	}
-
-}
-
-char converte_comando(char comando[512]) {
-	if(strcmp(comando,"cd")==0){ // comando local
-		return LCD;
-	}
-	else if(strcmp(comando,"ls")==0) // comando local
-		return LLS;
-	else if(strcmp(comando,"get")==0)
-		return GET;
-	else if(strcmp(comando,"put")==0)
-		return PUT;
-	else if(strcmp(comando,"lsr")==0)
-		return LS;
-	else if(strcmp(comando,"cdr")==0)
-		return CD;
-	else if(strcmp(comando,"echo")==0)
-		return ECHO;
-	else if(strcmp(comando,"exit")==0)
-		return EXIT;
-	else 
-		return ERRO;
-}
-
-
 int timeout( int rsocket ) {
 	struct timeval inicio, fim;
 	int dif=0, y;
-	uint8_t recebido[67], tamanho, paridade, tipo;
+	unsigned char recebido[67], tamanho, paridade, tipo;
 	gettimeofday(&inicio, NULL);
 	while(dif < TIMEOUT) {
 		recv(rsocket,recebido,67,MSG_DONTWAIT);
@@ -161,16 +106,6 @@ int timeout( int rsocket ) {
 						return 3;
 					else if (recebido[3] == ERRO1)
 						return 4;
-					else if (recebido[3] == ERRO3)
-						return 5;
-					else if (recebido[3] == ERRO6)
-						return 6;
-					else if (recebido[3] == ERRO7)
-						return 7;
-					else if (recebido[3] == ERRO8)
-						return 8;
-					else if (recebido[3] == ERRO9)
-						return 9;
 				}
 				else {
 					return 2;
@@ -183,7 +118,7 @@ int timeout( int rsocket ) {
 	return 0;
 
 }
-void espera_timeout (int rsocket, uint8_t *dados, int tamanho) {
+void espera_timeout (int rsocket, unsigned char *dados, int tamanho) {
 	int recebeu = 0;
 	while (recebeu == 0) {
 		int teste=timeout(rsocket); 
@@ -196,30 +131,6 @@ void espera_timeout (int rsocket, uint8_t *dados, int tamanho) {
 		}
 		else if (teste == 3) {
 			fprintf(stderr, "Permissão negada\n");
-			recebeu = 1;
-		}
-		else if (teste == 4) {
-			fprintf(stderr, "Não é um diretório\n");
-			recebeu = 1;
-		}
-		else if (teste == 5) {
-			fprintf(stderr, "Arquivo ou diretório não encontrado\n");
-			recebeu = 1;
-		}
-		else if (teste == 6) {
-			fprintf(stderr, "Não foi possível criar o arquivo no servidor\n");
-			recebeu = 1;
-		}
-		else if (teste == 7) {
-			fprintf(stderr, "Não foi possível ler o arquivo no servidor\n");
-			recebeu = 1;
-		}
-		else if (teste == 8) {
-			fprintf(stderr, "Não foi possível completar a leitura do arquivo no servidor\n");
-			recebeu = 1;
-		}
-		else if (teste == 9) {
-			fprintf(stderr, "Erro ao abrir a pasta\n");
 			recebeu = 1;
 		}
 		else {
@@ -229,7 +140,7 @@ void espera_timeout (int rsocket, uint8_t *dados, int tamanho) {
 	}
 }
 
-int espera_timeout_cliente (int rsocket, uint8_t *dados, int tamanho) {
+int espera_timeout_cliente (int rsocket, unsigned char *dados, int tamanho) {
 	int recebeu = 0;
 	while (recebeu == 0) {
 		int teste=timeout(rsocket); 
@@ -243,30 +154,6 @@ int espera_timeout_cliente (int rsocket, uint8_t *dados, int tamanho) {
 		else if (teste == 3) {
 			fprintf(stderr, "Permissão negada\n");
 			recebeu = 1;
-		}
-		else if (teste == 4) {
-			fprintf(stderr, "Não é um diretório\n");
-			recebeu = 1;
-		}
-		else if (teste == 5) {
-			fprintf(stderr, "Arquivo ou diretório não encontrado\n");
-			recebeu = 1;
-		}
-		else if (teste == 6) {
-			fprintf(stderr, "Não foi possível criar o arquivo no servidor\n");
-			recebeu = 1;
-		}
-		else if (teste == 7) {
-			fprintf(stderr, "Não foi possível ler o arquivo no servidor\n");
-			return 0;
-		}
-		else if (teste == 8) {
-			fprintf(stderr, "Não foi possível completar a leitura do arquivo no servidor\n");
-			return 0;
-		}
-		else if (teste == 9) {
-			fprintf(stderr, "Erro ao abrir pasta\n");
-			return 0;
 		}
 		else {
 			printf("Timeout, reenviando mensagem.\n");
@@ -276,35 +163,21 @@ int espera_timeout_cliente (int rsocket, uint8_t *dados, int tamanho) {
 	return 1;
 }
 
-void get (int rsocket, uint8_t *dados){
+void get (int rsocket, unsigned char *dados){
 
-	FILE *get;
-	
-	int flag_g;
-	
-	uint8_t recebido[67];
-	
-	int tamanho;
-	
-	uint8_t tamanho_arquivo[63];
-	
-	long tamanhoarq;
-	
-	int y, size;
-	
-	int paridade;
-	
-	uint8_t mensagem_erro[67];
-	
-	unsigned char buffer[67];
-		
-	uint8_t arquivo[63], tipo;
-
+	FILE *get;	
+	int flag_g;	
+	unsigned char recebido[67];	
+	int tamanho;	
+	unsigned char tamanho_arquivo[63];	
+	long tamanhoarq;	
+	int y, size;	
+	int paridade;	
+	unsigned char mensagem_erro[67];	
+	unsigned char buffer[67];		
+	unsigned char arquivo[63], tipo;
 	bzero(arquivo,63);
-
-	scanf(" %s",arquivo);
-
-	//Envia nome do arquivo
+	scanf(" %s",arquivo);	//Envia nome do arquivo
 
 	criaMensagem(arquivo, dados, strlen(arquivo), 0, GET);
 	write(rsocket, dados, 67); 
@@ -401,17 +274,12 @@ void get (int rsocket, uint8_t *dados){
 	}
 }
 
-void put (int rsocket, uint8_t *dados) {
-	FILE *put;
-	
-	long tam;
-	
-	int y, size;
-	
-	uint8_t buffer[63], sequencia;
-	
-	uint8_t arquivo[63];
-	
+void put (int rsocket, unsigned char *dados) {
+	FILE *put;	
+	long tam;	
+	int y, size;	
+	unsigned char buffer[63], sequencia;	
+	unsigned char arquivo[63];	
 	scanf(" %s", arquivo);
 
 	if((put=fopen(arquivo,"rb"))==NULL){
@@ -443,7 +311,7 @@ void put (int rsocket, uint8_t *dados) {
 	int x = 0;
 	while(feof(put)==0){	
 		x++;
-		if((size = fread(buffer,sizeof(uint8_t),63,put)) != 63) {
+		if((size = fread(buffer,sizeof(unsigned char),63,put)) != 63) {
 			if(ferror(put)!=0) {
 				fprintf(stderr,"Erro na leitura do arquivo\n");	
 				return;
@@ -473,20 +341,15 @@ void put (int rsocket, uint8_t *dados) {
 
 }
 
-void get_server (int rsocket, uint8_t *dados, uint8_t *recebido, uint8_t tipo, uint8_t tamanho, uint8_t paridade) {
+void get_server (int rsocket, unsigned char *dados, unsigned char *recebido, unsigned char tipo, unsigned char tamanho, unsigned char paridade) {
 
-	FILE *getr;
-	
-	uint8_t arquivo[63], buffer[63];
-	
-	int y, size;
-	
-	long tam;
-	
-	uint8_t mensagem_erro[67];
-	
-	bzero(arquivo,63);
-	
+	FILE *getr;	
+	unsigned char arquivo[63], buffer[63];	
+	int y, size;	
+	long tam;	
+	unsigned char mensagem_erro[67];	
+	bzero(arquivo,63);	
+
 	for(y=0; y<tamanho; y++) {
 		arquivo[y] = recebido[3+y];
 	}
@@ -513,7 +376,7 @@ void get_server (int rsocket, uint8_t *dados, uint8_t *recebido, uint8_t tipo, u
 
 		//Envia o tamanho do arquivo
 
-		criaMensagem((uint8_t *) arquivo, dados, strlen(arquivo), 0, TAMANHO);
+		criaMensagem((unsigned char *) arquivo, dados, strlen(arquivo), 0, TAMANHO);
 		write(rsocket, dados, 67); 
 		espera_timeout(rsocket, dados,67); 		
 	}
@@ -544,16 +407,12 @@ void get_server (int rsocket, uint8_t *dados, uint8_t *recebido, uint8_t tipo, u
 	fclose(getr);
 }
 
-void put_server (int rsocket, uint8_t *dados, uint8_t *recebido, uint8_t tipo, uint8_t tamanho, uint8_t paridade) {
+void put_server (int rsocket, unsigned char *dados, unsigned char *recebido, unsigned char tipo, unsigned char tamanho, unsigned char paridade) {
 
 	FILE *rec;
-
-	uint8_t tamanho_arquivo[63], arquivo[63], buffer[63];
-	
-	long tamanhoarq;
-		
-	uint8_t mensagem_erro[63], sequencia = 0, sequencia_old = 0;
-	
+	unsigned char tamanho_arquivo[63], arquivo[63], buffer[63];	
+	long tamanhoarq;		
+	unsigned char mensagem_erro[63], sequencia = 0, sequencia_old = 0;	
 	int y, flag_r;
 	
 	sequencia = recebido[2] >> 6;
@@ -655,7 +514,7 @@ void put_server (int rsocket, uint8_t *dados, uint8_t *recebido, uint8_t tipo, u
 							for(y=0;y<tamanho;y++) {
 								buffer[y] = recebido[3+y];	
 							}
-							fwrite(buffer,sizeof(uint8_t),tamanho,rec);
+							fwrite(buffer,sizeof(unsigned char),tamanho,rec);
 							criaMensagem(NULL, dados, 0, 0, ACK);
 							write(rsocket, dados, 67);
 							//printf("%d\n", sequencia);
@@ -674,11 +533,11 @@ void put_server (int rsocket, uint8_t *dados, uint8_t *recebido, uint8_t tipo, u
 }
 
 
-void ls_server (int rsocket, uint8_t *dados, uint8_t *recebido, unsigned char *diretorioatual) {
+void ls_server (int rsocket, unsigned char *dados, unsigned char *recebido, unsigned char *diretorioatual) {
 	DIR *dir;
 	struct dirent *dit;
 	
-	uint8_t mensagem[63];
+	unsigned char mensagem[63];
 	
 	if((dir = opendir(diretorioatual)) == NULL)
 	{
@@ -717,13 +576,11 @@ void ls_server (int rsocket, uint8_t *dados, uint8_t *recebido, unsigned char *d
 	espera_timeout(rsocket, dados,67); 	
 }
 
-void ls (int rsocket, uint8_t *dados) {
+void ls (int rsocket, unsigned char *dados) {
 
-	uint8_t tipo, tamanho, paridade, buffer[63];
-
+	unsigned char tipo, tamanho, paridade, buffer[63];
 	int y;
-	
-	uint8_t recebido[67];
+	unsigned char recebido[67];
 
 	criaMensagem(NULL, dados, 0, 0, LS);
 	write(rsocket, dados, 67);

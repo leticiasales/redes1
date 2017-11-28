@@ -175,7 +175,7 @@ while (len(dead)<3):
 			# print ('sent %s bytes back to %s' % (sent, address))
 # print ('closing clisocket')
 if (not (meunumero in dead)):
-	print ('Parabéns! Você derrubou todos os submarinos inimigos.')
+	print ('Parabens! Voce derrubou todos os submarinos inimigos.')
 else:
 	print ('Fim de jogo.')
 clisock.close()

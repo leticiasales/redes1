@@ -1,15 +1,15 @@
-#include<stdio.h>
-#include<stdlib.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <dirent.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include<unistd.h>
-#include<string.h>
-#include<errno.h>
-#include<time.h>
-#include<limits.h>
-#include<pwd.h>
-#include<grp.h>
+#include <unistd.h>
+#include <string.h>
+#include <errno.h>
+#include <time.h>
+#include <limits.h>
+#include <pwd.h>
+#include <grp.h>
 #include <libgen.h>
 #include <ncurses.h>
 int att=0;

@@ -12,7 +12,7 @@ from struct import *
 #or eh "passa pra frente" (cod, alvo, coor, alvoleu, acertor/error)
 
 map_size = 5
-ips = [('10.254.225.12',8888),('10.254.225.13',8888),('10.254.225.14',8888),('10.254.225.16',8888)]
+ips = [('10.254.225.12',8888),('10.254.225.13',8888),('10.254.225.14',8888),('10.254.225.15',8888)]
 const = 4096
 bastao = False
 meunumero = False
@@ -45,9 +45,10 @@ def conf_server():
 def tem_bastao(clisock, server_address):
 	global bastao, meunumero, first, tipobastao, maxtimeout
 	if (not first):
+		# socket.settimeout(10)
 		try:
 			# set timeout 5 second
-			socket.settimeout(10)
+			clisock.settimeout(10)
 			data, address = sock.recvfrom(const)
 		except:
 		   	print("Timeout! Tentando novamente...")
@@ -68,6 +69,7 @@ def tem_bastao(clisock, server_address):
 				print('Voce destruiu um navio inimigo. Aguarde sua proxima jogada.')
 			else:
 				print ('Ataque enviado. Voce atirou no vazio do oceano. Aguarde a sua vez.')
+			print message[4]
 			passa_o_bastao()
 			return
 		message = data[1:-1].split(',')
@@ -150,7 +152,7 @@ first = True
 bastao = (meunumero == 0)
 clisock, server_address = conf_client()
 sock = conf_server()
-navios = 2 #chuncho
+navios = 6
 
 maxtimeout = 5
 
@@ -176,7 +178,7 @@ while (len(dead)<3):
 				if (destino==meunumero):
 					coord = int(message[3])
 					# print coord
-					# @@aqui vai verificar o mapa and responder se acertor
+					# @@aqui vai verificar o mapa and responder se acertou
 					if (meumapa[coord] == 1):
 						print 'OUCH'
 						navios-=1

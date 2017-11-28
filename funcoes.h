@@ -16,48 +16,44 @@
 
 #define ERRO1 1 // diretório não existe
 #define ERRO2 2 // permissao negada
-#define ERRO3 3 // arquivo inexistente
-#define ERRO4 4 // tamanho do arquivo é gigante
-#define ERRO5 5 // mensagem nao entregue
-#define ERRO6 6 // Não foi possível criar o arquivo
-#define ERRO7 7 // Não foi possível ler o arquivo
-#define ERRO8 8 // Erro na leitura do arquivo
-#define ERRO9 9 // Erro ao abrir a pasta
+
 #define TIMEOUT 5 // tempo do timeout
 #define DADOS 0x0 // 000000 = 0
-#define CD 0x1 // 000001  = 1
 #define LCD 0x06 //000110 cd local = 6
-#define LS 0x2 //000010 = 2
 #define LLS 0x7 //000111 //ls local = 7
-#define TELA 0x3 //000011 = 3
-#define GET 0x4 //000100 = 4
-#define TAMANHO 0x5 //000101 = 5
-#define PUT 0x8 //001000 = 8
 #define SUCESSO 0x10 //010000 = 16
-#define FIM 0x21 //100001 = 33
-#define NACK 0x20 //100000 = 32
-#define ACK 0x30 //110000 = 48
-#define ERRO 0x3f //111111 = 63
-#define ECHO 0x3e //111110 = 62 // comando adicional para echo
-#define EXIT 0x3c //111100 =60 // comando adicional para finalizar o programa
+
 #define INICIO 0x7E // 01111110 = 126 // delimitador de inicio
+
+#define ACK 0x0
+#define TAMANHO 0x2
+#define SUCESSO 0x3
+#define CD 0x6
+#define LS 0x7
+#define GET 0x8
+#define PUT 0x9
+#define FIM 0xA
+#define TELA 0xC
+#define ERRO 0xE
+#define NACK 0xF
+
 
 int abrirRawSocket(char *interface);
 
 char converte_comando(char comando[512]);
 
-void criaMensagem(uint8_t *mensagem, uint8_t *buffer, uint8_t tamanho, uint8_t sequencia, uint8_t tipo);
+void criaMensagem(unsigned char *mensagem, unsigned char *buffer, unsigned char tamanho, unsigned char sequencia, unsigned char tipo);
 
 int timeout( int rsocket );
 
-void espera_timeout (int rsocket, uint8_t *dados, int tamanho);
+void espera_timeout (int rsocket, unsigned char *dados, int tamanho);
 
-void get (int rsocket, uint8_t *dados);
+void get (int rsocket, unsigned char *dados);
 
-void put (int rsocket, uint8_t *dados);
+void put (int rsocket, unsigned char *dados);
 
-void get_server (int rsocket, uint8_t *dados, uint8_t *recebido, uint8_t tipo, uint8_t tamanho, uint8_t paridade);
+void get_server (int rsocket, unsigned char *dados, unsigned char *recebido, unsigned char tipo, unsigned char tamanho, unsigned char paridade);
 
-void put_server (int rsocket, uint8_t *dados, uint8_t *recebido, uint8_t tipo, uint8_t tamanho, uint8_t paridade);
+void put_server (int rsocket, unsigned char *dados, unsigned char *recebido, unsigned char tipo, unsigned char tamanho, unsigned char paridade);
 
 

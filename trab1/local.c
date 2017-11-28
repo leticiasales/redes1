@@ -1,23 +1,23 @@
 /***************************************************************************
-
-  @file         main.c
   @author       Stephen Brennan
   @date         Thursday,  8 January 2015
   @brief        LSH (Libstephen SHell)
 
-  @adapted by Leticia Sales
+  @adapted by Leticia Sales and Matheus Lima
 ****************************************************************************/
 
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <grp.h>
+#include <inttypes.h>
 #include <libgen.h>
 #include <limits.h>
 // #include <linux/if_packet.h>
 // #include <linux/if.h>
 #include <ncurses.h>
 #include <net/ethernet.h>
+#include <netpacket/packet.h>
 #include <poll.h>
 #include <pwd.h>
 #include <stdint.h>
@@ -29,6 +29,7 @@
 #include <sys/ioctl.h>
 #include <sys/wait.h>
 #include <sys/types.h>
+#include <sys/select.h>
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
@@ -40,6 +41,25 @@ const int s_type = 5;
 const int s_pair = 8;
 
 const unsigned char init = 0x7E;
+
+const unsigned char ack = 0x0;
+const unsigned char size = 0x2;
+const unsigned char ok = 0x3;
+const unsigned char cd = 0x6;
+const unsigned char ls = 0x7;
+const unsigned char get = 0x8;
+const unsigned char put = 0x9;
+const unsigned char fim = 0xA;
+const unsigned char tela = 0xC;
+const unsigned char erro = 0xE;
+const unsigned char nack = 0xF;
+
+const int erro1 = 1; // diretório não existe
+const int erro2 = 2; // permissao negada
+
+int rsocket;
+fd_set condicao; // variável usada para checar a condição do socket (ready, writing or pending)
+unsigned char received[36];
 
 typedef struct bloco bloco;
 
@@ -103,11 +123,6 @@ int topack()
 }
 
 /*
-  local
-*/
-
-
-/*
   Function Declarations for builtin shell commands:
  */
 
@@ -115,8 +130,8 @@ int lsh_cd(char **args);
 int lsh_help(char **args);
 int lsh_exit(char **args);
 int tish_ls(char **args);
-int tish_ls_a(char **args);
-int tish_ls_l(char **args);
+int serv_cd(char **args);
+int serv_ls(char **args);
 
 /*
   List of builtin commands, followed by their corresponding functions.
@@ -127,8 +142,8 @@ char *builtin_str[] = {
   "help",
   "exit",
   "ls",
-  "ls -a",
-  "ls -l"
+  "scd",
+  "sls"
 };
 
 int (*builtin_func[]) (char **) = {
@@ -136,12 +151,24 @@ int (*builtin_func[]) (char **) = {
   &lsh_help,
   &lsh_exit,
   &tish_ls,
-  &tish_ls_a,
-  &tish_ls_l
+  &serv_cd,
+  &serv_ls
 };
 
 int lsh_num_builtins() {
   return sizeof(builtin_str) / sizeof(char *);
+}
+
+/*
+  Builtin function implementations.
+*/
+
+int serv_cd(char **args) {
+  return 1;
+}
+
+int serv_ls(char **args) {
+  tish_ls(args);
 }
 
 //It will print file Information in lines with File_permisiions and XYZ..!!
@@ -161,19 +188,6 @@ void long_listing(char* fname)
       printf(" %s\n", myfile->d_name);
   }
   closedir(mydir);
-}
-/*
-  Builtin function implementations.
-*/
-
-int tish_ls_a(char **args)
-{
-  printf("batata\n");
-}
-
-int tish_ls_l(char **args)
-{
-  printf("\n");
 }
 
 int tish_ls(char **args)
@@ -220,11 +234,12 @@ int tish_ls(char **args)
  */
 int lsh_cd(char **args)
 {
+  printf(getcwd());
   if (args[1] == NULL) {
     fprintf(stderr, "lsh: expected argument to \"cd\"\n");
   } else {
     if (chdir(args[1]) != 0) {
-      perror("lsh");
+      perror("Erro");
     }
   }
   return 1;
@@ -278,6 +293,19 @@ int lsh_execute(char **args)
       return (*builtin_func[i])(args);
     }
   }
+  printf("Comando invalido\n");
+
+  return 1;
+  //return lsh_launch(args);
+}
+
+int serv_execute(char *args)
+{
+  int i;
+  unsigned int type = args[0];
+
+  if(type==ls) serv_ls(&args);
+  else if(type==cd)printf("cd");
 
   return 0;
   //return lsh_launch(args);
@@ -354,7 +382,7 @@ char **lsh_split_line(char *line)
       tokens_backup = tokens;
       tokens = realloc(tokens, bufsize * sizeof(char*));
       if (!tokens) {
-		free(tokens_backup);
+		    free(tokens_backup);
         fprintf(stderr, "lsh: allocation error\n");
         exit(EXIT_FAILURE);
       }
@@ -386,6 +414,65 @@ void lsh_loop(void)
   } while (status);
 }
 
+void serv_loop(void)
+{
+  int i;
+  unsigned char size, seq, type, data, pair;
+  while(listen(rsocket,2)) {
+    FD_ZERO(&condicao); //socket vazio
+    recv(rsocket, received, 36, 0);
+    if(received[0] == init) {
+      size = organizer(5, 0, received[1]);
+      seq = organizer(0, 3, received[1]);
+      seq |= organizer(3, 0, received[2]);
+      type = 0x7;//organizer(0, 5, received[2]);
+      data = ""; //@@@@@@@
+      pair = 0;
+      serv_execute(&type);
+    }
+    else {
+      packet(NULL, 0, 0, nack, 0); //envia nack
+      // write(rsocket, data, 36);  
+    }
+  }
+}
+
+// int abrirRawSocket(char *interface){
+//   struct packet_mreq mreq;
+//   struct ifreq ifr; // 
+//   struct sockaddr_ll local;
+
+//   /* Abre/cria o socket */
+//   if((rsocket = socket(AF_PACKET, SOCK_RAW, IPPROTO_RAW)) < 0){ // AF_PACKET = low level packet interface; 
+//                       // SOCK_RAW = packets are passed to and from the device driver without any changes in the packet data.
+//     return -1;
+//   }
+
+//   memset(&ifr, 0, sizeof(ifr)); // "aloca" um espaço para os dados da interface
+//   strcpy(ifr.ifr_name, interface); // copia o nome da interface em ifr.ifr_name
+//   if(ioctl(rsocket, SIOCGIFINDEX, &ifr) < 0){ // o indice da interface deve ter sido retornado em ifr.ifr_ifindex
+//     return -2;
+//   }
+
+//   /* Liga o socket a interface */
+//   memset(&local, 0, sizeof(local)); // "aloca" um espaço para o 'local'
+//   local.sll_family = AF_PACKET;
+//   local.sll_ifindex = ifr.ifr_ifindex;
+//   local.sll_protocol = htons(ETH_P_ALL);
+//   if(bind(rsocket, (struct sockaddr *) &local, sizeof(local)) < 0){
+//           return -3;
+//   }
+
+//   /* Liga o modo promiscuo (envia mensagem para todos na rede) */
+//   memset(&mreq, 0, sizeof(mreq));
+//   mreq.mr_ifindex = ifr.ifr_ifindex;
+//   mreq.mr_type = PACKET_MR_PROMISC;
+//   if(setsockopt(rsocket, SOL_PACKET, PACKET_ADD_MEMBERSHIP,&mreq, sizeof(mreq)) < 0){
+//     return -4;
+//   }
+//   return rsocket;
+// }
+
 /**
    @brief Main entry point.
    @param argc Argument count.
@@ -394,13 +481,45 @@ void lsh_loop(void)
  */
 int main(int argc, char **argv)
 {
-  // Load config files, if any.
+  int mode = 0;
+  
 
-  // Run command loop.
-  lsh_loop();
+  /* Verifica entradas */
+
+  int i = 1;
+  if(strcmp(argv[i],"-s") == 0) { // é servidor
+    mode = 1; //seleciona o servidor
+    printf("You're the server\n");
+  }
+  else{printf("You're the client\n");}
+
+
+  /* Cria o socket e o liga a interface */
+
+  // if((rsocket = abrirRawSocket("localhost")) < 0){
+  //   if(rsocket==-1) {
+  //     fprintf(stderr, "Erro ao abrir o raw socket (não é root).\n");
+  //     system("sudo su");
+  //   }
+  //   exit(-1);
+  // }
+
+  /* Cria o terminal */
+
+  if(mode == 0) { //é cliente
+    
+    /* CLIENTE */   
+
+    // Run command loop.
+    lsh_loop();
+  }
+  else { // é servidor
+
+    /* SERVIDOR */
+    serv_loop();
+  }
 
   // Perform any shutdown/cleanup.
-
-  return EXIT_SUCCESS;
+  return 1;
 }
 
