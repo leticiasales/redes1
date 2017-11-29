@@ -13,11 +13,11 @@
 #include <inttypes.h>
 #include <libgen.h>
 #include <limits.h>
-// #include <linux/if_packet.h>
-// #include <linux/if.h>
+//#include <linux/if.h>
+#include <linux/if_packet.h>
 #include <ncurses.h>
 #include <net/ethernet.h>
-#include <netpacket/packet.h>
+//#include <netpacket/packet.h>
 #include <poll.h>
 #include <pwd.h>
 #include <stdint.h>
@@ -53,6 +53,7 @@ const unsigned char fim = 0xA;
 const unsigned char tela = 0xC;
 const unsigned char erro = 0xE;
 const unsigned char nack = 0xF;
+
 
 const int erro1 = 1; // diretório não existe
 const int erro2 = 2; // permissao negada
@@ -437,41 +438,48 @@ void serv_loop(void)
   }
 }
 
-// int abrirRawSocket(char *interface){
-//   struct packet_mreq mreq;
-//   struct ifreq ifr; // 
-//   struct sockaddr_ll local;
 
-//   /* Abre/cria o socket */
-//   if((rsocket = socket(AF_PACKET, SOCK_RAW, IPPROTO_RAW)) < 0){ // AF_PACKET = low level packet interface; 
-//                       // SOCK_RAW = packets are passed to and from the device driver without any changes in the packet data.
-//     return -1;
-//   }
+int ConexaoRawSocket(char *device)
+{
+  int soquete;
+  struct ifreq ir;
+  struct sockaddr_ll endereco;
+  struct packet_mreq mr;
 
-//   memset(&ifr, 0, sizeof(ifr)); // "aloca" um espaço para os dados da interface
-//   strcpy(ifr.ifr_name, interface); // copia o nome da interface em ifr.ifr_name
-//   if(ioctl(rsocket, SIOCGIFINDEX, &ifr) < 0){ // o indice da interface deve ter sido retornado em ifr.ifr_ifindex
-//     return -2;
-//   }
+  soquete = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));    /*cria socket*/
+  if (soquete == -1) {
+    printf("Erro no Socket\n");
+    exit(-1);
+  }
 
-//   /* Liga o socket a interface */
-//   memset(&local, 0, sizeof(local)); // "aloca" um espaço para o 'local'
-//   local.sll_family = AF_PACKET;
-//   local.sll_ifindex = ifr.ifr_ifindex;
-//   local.sll_protocol = htons(ETH_P_ALL);
-//   if(bind(rsocket, (struct sockaddr *) &local, sizeof(local)) < 0){
-//           return -3;
-//   }
+  memset(&ir, 0, sizeof(struct ifreq));   /*dispositivo eth0*/
+  memcpy(ir.ifr_name, device, sizeof(device));
+  if (ioctl(soquete, SIOCGIFINDEX, &ir) == -1) {
+    printf("Erro no ioctl\n");
+    exit(-1);
+  }
+  
 
-//   /* Liga o modo promiscuo (envia mensagem para todos na rede) */
-//   memset(&mreq, 0, sizeof(mreq));
-//   mreq.mr_ifindex = ifr.ifr_ifindex;
-//   mreq.mr_type = PACKET_MR_PROMISC;
-//   if(setsockopt(rsocket, SOL_PACKET, PACKET_ADD_MEMBERSHIP,&mreq, sizeof(mreq)) < 0){
-//     return -4;
-//   }
-//   return rsocket;
-// }
+  memset(&endereco, 0, sizeof(endereco));   /*IP do dispositivo*/
+  endereco.sll_family = AF_PACKET;
+  endereco.sll_protocol = htons(ETH_P_ALL);
+  endereco.sll_ifindex = ir.ifr_ifindex;
+  if (bind(soquete, (struct sockaddr *)&endereco, sizeof(endereco)) == -1) {
+    printf("Erro no bind\n");
+    exit(-1);
+  }
+
+
+  memset(&mr, 0, sizeof(mr));          /*Modo Promiscuo*/
+  mr.mr_ifindex = ir.ifr_ifindex;
+  mr.mr_type = PACKET_MR_PROMISC;
+  if (setsockopt(soquete, SOL_PACKET, PACKET_ADD_MEMBERSHIP, &mr, sizeof(mr)) == -1)  {
+    printf("Erro ao fazer setsockopt\n");
+    exit(-1);
+  }
+
+  return soquete;
+}
 
 /**
    @brief Main entry point.
@@ -498,13 +506,13 @@ int main(int argc, char **argv)
 
   /* Cria o socket e o liga a interface */
 
-  // if((rsocket = abrirRawSocket("localhost")) < 0){
-  //   if(rsocket==-1) {
-  //     fprintf(stderr, "Erro ao abrir o raw socket (não é root).\n");
-  //     system("sudo su");
-  //   }
-  //   exit(-1);
-  // }
+  if((rsocket = ConexaoRawSocket("localhost")) < 0){
+  if(rsocket==-1) {
+    fprintf(stderr, "Erro ao abrir o raw socket (não é root).\n");
+    system("sudo su");
+ }
+  exit(-1);
+}
 
   /* Cria o terminal */
 
