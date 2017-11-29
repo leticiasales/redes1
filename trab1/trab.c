@@ -39,6 +39,8 @@
 #endif
 
 
+#define LSH_RL_BUFSIZE 1024
+
 const int s_init = 8;
 const int s_size = 5;
 const int s_seq = 6;
@@ -65,7 +67,7 @@ const int erro2 = 2; // permissao negada
 
 int rsocket;
 fd_set condicao; // variável usada para checar a condição do socket (ready, writing or pending)
-unsigned char received[36];
+unsigned char received[37];
 
 typedef struct bloco bloco;
 
@@ -74,7 +76,7 @@ struct bloco
   unsigned char size;
   unsigned char seq;
   unsigned char type;
-  unsigned char pair;
+  unsigned char data[32];
 };
 
 unsigned int dec_to_bin(int n)
@@ -99,28 +101,40 @@ unsigned char organizer(int left, int right, unsigned char byte)
   return tmp>>(8-right);
 }
 
-void packet(unsigned char ret[4], unsigned char size, unsigned char seq, unsigned char type, unsigned char pair)
+void packet(unsigned char ret[37], bloco msg)
 {
   // printf("packet: %d, %d, %d, %d\n", dec_to_bin(size), dec_to_bin(seq), dec_to_bin(type), dec_to_bin(pair));
+  int i;
   ret[0] = init;
-  ret[1] = size << 3;
-  ret[1] |= organizer(5, 0, seq);
-  ret[2] = organizer(0, 3, seq);
-  ret[2] |= organizer(0, 5, type);
-  ret[3] = pair;
+  ret[1] = msg.size << 3;
+  ret[1] |= organizer(5, 0, msg.seq);
+  ret[2] = organizer(0, 3, msg.seq);
+  ret[2] |= organizer(0, 5, msg.type);
+  for (i = 0; i < msg.size; ++i)
+  {
+    ret[3 + i] = msg.data[i];
+  }
+  printf("%d\n", 3 + i);
+  ret[3 + i] = 0;
+  ret[3 + i] |= ret[1];
+  ret[3 + i] |= ret[2];
+  for (int i = 0; i < msg.size; ++i)
+  {
+    ret[4] |= msg.data[i];
+  }
 }
 
 int topack()
 {
   bloco meubloco;
-  unsigned char tmp[4];
+  unsigned char tmp[37];
 
   meubloco.size = organizer(0,s_size,'g');
   meubloco.seq = organizer(0,s_seq,'h');
   meubloco.type = organizer(0,s_type,'i');
-  meubloco.pair = organizer(0,s_pair,'j');
+  strcpy(meubloco.data, "jota");
 
-  packet(tmp, meubloco.size, meubloco.seq, meubloco.type, meubloco.pair);
+  packet(tmp, meubloco);
 
   printf("%08u.", dec_to_bin(tmp[0]));
   printf("%08u.", dec_to_bin(tmp[1]));
@@ -134,10 +148,10 @@ int topack()
 
 int cli_cd(char **args);
 int cli_help(char **args);
-int cli_exit(char **args);
-int tish_ls(char **args);
+int cli_ls(char **args);
 int serv_cd(char **args);
 int serv_ls(char **args);
+int all_exit(char **args);
 
 /*
   List of builtin commands, followed by their corresponding functions.
@@ -146,19 +160,19 @@ int serv_ls(char **args);
 char *builtin_str[] = {
   "cd",
   "help",
-  "exit",
   "ls",
   "scd",
-  "sls"
+  "sls",
+  "exit"
 };
 
 int (*builtin_func[]) (char **) = {
   &cli_cd,
   &cli_help,
-  &cli_exit,
-  &tish_ls,
+  &cli_ls,
   &serv_cd,
-  &serv_ls
+  &serv_ls,
+  &all_exit
 };
 
 int cli_num_builtins() {
@@ -170,14 +184,38 @@ int cli_num_builtins() {
 */
 
 int serv_cd(char **args) {
+  unsigned char msg[37];
+  bloco dados;
+  dados.size = (args[1]!=NULL?strlen(args[1]):0);
+  dados.seq = 0;
+  dados.type = cd;
+  if (strlen(args[1])) //strlen
+  {
+    strcpy(dados.data, args[1]);
+  }
+  // else dados.data = NULL;
+  packet(msg, dados);
+  printf("%s\n", msg);
   return 1;
 }
 
 int serv_ls(char **args) {
-  tish_ls(args);
+  unsigned char msg[37];
+  bloco dados;
+  printf("%lu\n", sizeof(args));
+  if (sizeof(args)) //strlen
+  {
+    dados.size = 
+    printf("%s\n", args[1]);
+    strcpy(dados.data, args[1]);
+  }
+  dados.seq = 0x0;
+  dados.type = ls;
+  packet(msg, dados);
+  return 1;
 }
 
-//It will print file Information in lines with File_permisiions and XYZ..!!
+//It will print file Information in lines with File_permissions and XYZ..!!
 void long_listing(char* fname)
 {
   DIR *mydir;
@@ -196,15 +234,15 @@ void long_listing(char* fname)
   closedir(mydir);
 }
 
-int tish_ls(char **args)
+int cli_ls(char **args)
 {
   char *curr_dir = NULL; 
   DIR *dp = NULL; 
   struct dirent *dptr = NULL; 
   unsigned int count = 0; 
 
-  curr_dir = getcwd(curr_dir, 32); 
-  if(NULL == curr_dir){return 0;} 
+  curr_dir = getcwd(curr_dir, LSH_RL_BUFSIZE); 
+  if(NULL == curr_dir){return 1;} 
    
   dp = opendir((const char*)curr_dir);    
   if(NULL == dp){return 0;} 
@@ -273,7 +311,7 @@ int cli_help(char **args)
    @param args List of args.  Not examined.
    @return Always returns 0, to terminate execution.
  */
-int cli_exit(char **args)
+int all_exit(char **args)
 {
   return 0;
 }
@@ -305,24 +343,22 @@ int cli_execute(char **args)
 
 int serv_execute(char *args)
 {
-  int i;
-  unsigned int type = args[0];
+  unsigned char type = args[0];
 
   if(type==ls) serv_ls(&args);
-  else if(type==cd)printf("cd");
+  else if(type==cd) serv_cd(&args);
 
-  return 0;
+  return 1;
   //return cli_launch(args);
 }
 
-#define cli_RL_BUFSIZE 1024
 /**
    @brief Read a line of input from stdin.
    @return The line from stdin.
  */
 char *cli_read_line(void)
 {
-  int bufsize = cli_RL_BUFSIZE;
+  int bufsize = LSH_RL_BUFSIZE;
   int position = 0;
   char *buffer = malloc(sizeof(char) * bufsize);
   int c;
@@ -348,7 +384,7 @@ char *cli_read_line(void)
 
     // If we have exceeded the buffer, reallocate.
     if (position >= bufsize) {
-      bufsize += cli_RL_BUFSIZE;
+      bufsize += LSH_RL_BUFSIZE;
       buffer = realloc(buffer, bufsize);
       if (!buffer) {
         fprintf(stderr, "lsh: allocation error\n");
@@ -421,7 +457,7 @@ void cli_loop(void)
 void serv_loop(void)
 {
   int i;
-  unsigned char size, seq, type, pair;
+  unsigned char size, seq, type;
   unsigned char *data;
   while(listen(rsocket,2)) {
     FD_ZERO(&condicao); //socket vazio
@@ -433,24 +469,22 @@ void serv_loop(void)
       type = 0x7;//organizer(0, 5, received[2]);
       data = malloc(sizeof(char)*(int)size);
       data = '\0';
-      pair = 0;
       serv_execute(&type);
     }
     else {
-      packet(NULL, 0, 0, nack, 0); //envia nack
+      //packet(NULL, NULL); //envia nack
       // write(rsocket, data, 36);  
     }
   }
 }
 
 
-int ConexaoRawSocket(char *device){
-  
+int ConexaoRawSocket(char *device)
+{
   int soquete;
   struct ifreq ir;
   struct sockaddr_ll endereco;
   struct packet_mreq mr;
-
 
   soquete = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));    /*cria socket*/
   if (soquete == -1) {
@@ -497,29 +531,27 @@ int ConexaoRawSocket(char *device){
 int main(int argc, char **argv)
 {
   int mode = 0;
-  
 
   /* Verifica entradas */
-
-  int i = 1;
-  if(strcmp(argv[i],"-s") == 0) { // é servidor
+  if (argc == 1 || strcmp(argv[1],"-s") != 0) 
+  {
+    printf("You're the client\n");
+  }
+  else
+  {
     mode = 1; //seleciona o servidor
     printf("You're the server\n");
   }
-  else {
-    printf("You're the client\n");
-  }
-
 
   /* Cria o socket e o liga a interface */
 
-  if((rsocket = ConexaoRawSocket("localhost")) < 0){
-  if(rsocket==-1) {
-    fprintf(stderr, "Erro ao abrir o raw socket (não é root).\n");
-    system("sudo su");
- }
-  exit(-1);
-}
+//   if((rsocket = ConexaoRawSocket("localhost")) < 0){
+//   if(rsocket==-1) {
+//     fprintf(stderr, "Erro ao abrir o raw socket (não é root).\n");
+//     system("sudo su");
+//  }
+//   exit(-1);
+// }
 
   /* Cria o terminal */
 
