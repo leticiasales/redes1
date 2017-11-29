@@ -126,9 +126,9 @@ int topack()
   Function Declarations for builtin shell commands:
  */
 
-int lsh_cd(char **args);
-int lsh_help(char **args);
-int lsh_exit(char **args);
+int cli_cd(char **args);
+int cli_help(char **args);
+int cli_exit(char **args);
 int tish_ls(char **args);
 int serv_cd(char **args);
 int serv_ls(char **args);
@@ -147,15 +147,15 @@ char *builtin_str[] = {
 };
 
 int (*builtin_func[]) (char **) = {
-  &lsh_cd,
-  &lsh_help,
-  &lsh_exit,
+  &cli_cd,
+  &cli_help,
+  &cli_exit,
   &tish_ls,
   &serv_cd,
   &serv_ls
 };
 
-int lsh_num_builtins() {
+int cli_num_builtins() {
   return sizeof(builtin_str) / sizeof(char *);
 }
 
@@ -197,7 +197,7 @@ int tish_ls(char **args)
   struct dirent *dptr = NULL; 
   unsigned int count = 0; 
 
-  curr_dir = getenv("PWD"); 
+  curr_dir = getcwd(curr_dir, 32); 
   if(NULL == curr_dir){return 0;} 
    
   dp = opendir((const char*)curr_dir);    
@@ -208,7 +208,7 @@ int tish_ls(char **args)
     { 
         if(dptr->d_name[0] != '.') 
         { 
-          printf("%15s", dptr->d_name);
+          printf("%16s", dptr->d_name);
         } 
     } 
     printf("\n");
@@ -220,7 +220,7 @@ int tish_ls(char **args)
   {
     for(count = 0; NULL != (dptr = readdir(dp)); count++) 
     { 
-      printf("%15s", dptr->d_name);
+      printf("%16s", dptr->d_name);
     } 
     printf("\n");
   }
@@ -232,9 +232,8 @@ int tish_ls(char **args)
    @param args List of args.  args[0] is "cd".  args[1] is the directory.
    @return Always returns 1, to continue executing.
  */
-int lsh_cd(char **args)
+int cli_cd(char **args)
 {
-  printf(getcwd());
   if (args[1] == NULL) {
     fprintf(stderr, "lsh: expected argument to \"cd\"\n");
   } else {
@@ -250,14 +249,13 @@ int lsh_cd(char **args)
    @param args List of args.  Not examined.
    @return Always returns 1, to continue executing.
  */
-int lsh_help(char **args)
+int cli_help(char **args)
 {
   int i;
-  printf("Stephen Brennan's LSH + lgsm15&mlas12's Trab1\n");
-  printf("Type program names and arguments, and hit enter.\n");
-  printf("The following are built in:\n");
+  printf("lgsm15&mlas12's Trab1 based on Stephen Brennan's LSH\n");
+  printf("Type on of the following built in commands:\n");
 
-  for (i = 0; i < lsh_num_builtins(); i++) {
+  for (i = 0; i < cli_num_builtins(); i++) {
     printf("  %s\n", builtin_str[i]);
   }
 
@@ -269,7 +267,7 @@ int lsh_help(char **args)
    @param args List of args.  Not examined.
    @return Always returns 0, to terminate execution.
  */
-int lsh_exit(char **args)
+int cli_exit(char **args)
 {
   return 0;
 }
@@ -279,7 +277,7 @@ int lsh_exit(char **args)
    @param args Null terminated list of arguments.
    @return 1 if the shell should continue running, 0 if it should terminate
  */
-int lsh_execute(char **args)
+int cli_execute(char **args)
 {
   int i;
 
@@ -288,7 +286,7 @@ int lsh_execute(char **args)
     return 1;
   }
 
-  for (i = 0; i < lsh_num_builtins(); i++) {
+  for (i = 0; i < cli_num_builtins(); i++) {
     if (strcmp(args[0], builtin_str[i]) == 0) {
       return (*builtin_func[i])(args);
     }
@@ -296,7 +294,7 @@ int lsh_execute(char **args)
   printf("Comando invalido\n");
 
   return 1;
-  //return lsh_launch(args);
+  //return cli_launch(args);
 }
 
 int serv_execute(char *args)
@@ -308,17 +306,17 @@ int serv_execute(char *args)
   else if(type==cd)printf("cd");
 
   return 0;
-  //return lsh_launch(args);
+  //return cli_launch(args);
 }
 
-#define LSH_RL_BUFSIZE 1024
+#define cli_RL_BUFSIZE 1024
 /**
    @brief Read a line of input from stdin.
    @return The line from stdin.
  */
-char *lsh_read_line(void)
+char *cli_read_line(void)
 {
-  int bufsize = LSH_RL_BUFSIZE;
+  int bufsize = cli_RL_BUFSIZE;
   int position = 0;
   char *buffer = malloc(sizeof(char) * bufsize);
   int c;
@@ -344,7 +342,7 @@ char *lsh_read_line(void)
 
     // If we have exceeded the buffer, reallocate.
     if (position >= bufsize) {
-      bufsize += LSH_RL_BUFSIZE;
+      bufsize += cli_RL_BUFSIZE;
       buffer = realloc(buffer, bufsize);
       if (!buffer) {
         fprintf(stderr, "lsh: allocation error\n");
@@ -354,16 +352,16 @@ char *lsh_read_line(void)
   }
 }
 
-#define LSH_TOK_BUFSIZE 64
-#define LSH_TOK_DELIM " \t\r\n\a"
+#define cli_TOK_BUFSIZE 64
+#define cli_TOK_DELIM " \t\r\n\a"
 /**
    @brief Split a line into tokens (very naively).
    @param line The line.
    @return Null-terminated array of tokens.
  */
-char **lsh_split_line(char *line)
+char **cli_split_line(char *line)
 {
-  int bufsize = LSH_TOK_BUFSIZE, position = 0;
+  int bufsize = cli_TOK_BUFSIZE, position = 0;
   char **tokens = malloc(bufsize * sizeof(char*));
   char *token, **tokens_backup;
 
@@ -372,23 +370,23 @@ char **lsh_split_line(char *line)
     exit(EXIT_FAILURE);
   }
 
-  token = strtok(line, LSH_TOK_DELIM);
+  token = strtok(line, cli_TOK_DELIM);
   while (token != NULL) {
     tokens[position] = token;
     position++;
 
     if (position >= bufsize) {
-      bufsize += LSH_TOK_BUFSIZE;
+      bufsize += cli_TOK_BUFSIZE;
       tokens_backup = tokens;
       tokens = realloc(tokens, bufsize * sizeof(char*));
       if (!tokens) {
-		    free(tokens_backup);
+        free(tokens_backup);
         fprintf(stderr, "lsh: allocation error\n");
         exit(EXIT_FAILURE);
       }
     }
 
-    token = strtok(NULL, LSH_TOK_DELIM);
+    token = strtok(NULL, cli_TOK_DELIM);
   }
   tokens[position] = NULL;
   return tokens;
@@ -397,7 +395,7 @@ char **lsh_split_line(char *line)
 /**
    @brief Loop getting input and executing it.
  */
-void lsh_loop(void)
+void cli_loop(void)
 {
   char *line;
   char **args;
@@ -405,9 +403,9 @@ void lsh_loop(void)
 
   do {
     printf("> ");
-    line = lsh_read_line();
-    args = lsh_split_line(line);
-    status = lsh_execute(args);
+    line = cli_read_line();
+    args = cli_split_line(line);
+    status = cli_execute(args);
 
     free(line);
     free(args);
@@ -417,7 +415,8 @@ void lsh_loop(void)
 void serv_loop(void)
 {
   int i;
-  unsigned char size, seq, type, data, pair;
+  unsigned char size, seq, type, pair;
+  unsigned char *data;
   while(listen(rsocket,2)) {
     FD_ZERO(&condicao); //socket vazio
     recv(rsocket, received, 36, 0);
@@ -426,7 +425,8 @@ void serv_loop(void)
       seq = organizer(0, 3, received[1]);
       seq |= organizer(3, 0, received[2]);
       type = 0x7;//organizer(0, 5, received[2]);
-      data = ""; //@@@@@@@
+      data = malloc(sizeof(char)*(int)size);
+      data = '\0';
       pair = 0;
       serv_execute(&type);
     }
@@ -491,7 +491,9 @@ int main(int argc, char **argv)
     mode = 1; //seleciona o servidor
     printf("You're the server\n");
   }
-  else{printf("You're the client\n");}
+  else {
+    printf("You're the client\n");
+  }
 
 
   /* Cria o socket e o liga a interface */
@@ -506,15 +508,11 @@ int main(int argc, char **argv)
 
   /* Cria o terminal */
 
-  if(mode == 0) { //é cliente
-    
+  if(mode == 0) {
     /* CLIENTE */   
-
-    // Run command loop.
-    lsh_loop();
+    cli_loop();
   }
-  else { // é servidor
-
+  else {
     /* SERVIDOR */
     serv_loop();
   }
