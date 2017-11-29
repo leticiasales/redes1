@@ -104,27 +104,26 @@ unsigned char organizer(int left, int right, unsigned char byte)
 void packet(unsigned char ret[37], bloco msg)
 {
   // printf("packet: %d, %d, %d, %d\n", dec_to_bin(size), dec_to_bin(seq), dec_to_bin(type), dec_to_bin(pair));
-  int i;
+  int i = 0;
   ret[0] = init;
   ret[1] = msg.size << 3;
   ret[1] |= organizer(5, 0, msg.seq);
   ret[2] = organizer(0, 3, msg.seq);
   ret[2] |= organizer(0, 5, msg.type);
-  for (i = 0; i < msg.size; ++i)
+  for (; i < msg.size; ++i)
   {
     ret[3 + i] = msg.data[i];
   }
-  printf("%d\n", 3 + i);
   ret[3 + i] = 0;
   ret[3 + i] |= ret[1];
   ret[3 + i] |= ret[2];
-  for (int i = 0; i < msg.size; ++i)
+  for (int j = 0; j < msg.size; ++j)
   {
-    ret[4] |= msg.data[i];
+    ret[3 + i] |= msg.data[j];
   }
 }
 
-int topack()
+void topack()
 {
   bloco meubloco;
   unsigned char tmp[37];
@@ -186,32 +185,34 @@ int cli_num_builtins() {
 int serv_cd(char **args) {
   unsigned char msg[37];
   bloco dados;
-  dados.size = (args[1]!=NULL?strlen(args[1]):0);
+  dados.size = 0;
   dados.seq = 0;
   dados.type = cd;
-  if (strlen(args[1])) //strlen
+  if (args[1] != NULL)
   {
+    dados.size = strlen(args[1]);
     strcpy(dados.data, args[1]);
   }
-  // else dados.data = NULL;
+  //else dados.data = NULL;
   packet(msg, dados);
-  printf("%s\n", msg);
+  send(rsocket, msg, dados.size + 4, 0);
   return 1;
 }
 
 int serv_ls(char **args) {
   unsigned char msg[37];
   bloco dados;
-  printf("%lu\n", sizeof(args));
-  if (sizeof(args)) //strlen
-  {
-    dados.size = 
-    printf("%s\n", args[1]);
-    strcpy(dados.data, args[1]);
-  }
+  dados.size = 0;
   dados.seq = 0x0;
   dados.type = ls;
+  if (args[1] != NULL)
+  {
+    dados.size = strlen(args[1]);
+    strcpy(dados.data, args[1]);
+  }
+  //else dados.data = NULL;
   packet(msg, dados);
+  send(rsocket, msg, dados.size + 4, 0);
   return 1;
 }
 
@@ -236,16 +237,17 @@ void long_listing(char* fname)
 
 int cli_ls(char **args)
 {
+  printf("args[1] = %s\n", args[1]);
   char *curr_dir = NULL; 
   DIR *dp = NULL; 
   struct dirent *dptr = NULL; 
   unsigned int count = 0; 
 
   curr_dir = getcwd(curr_dir, LSH_RL_BUFSIZE); 
-  if(NULL == curr_dir){return 1;} 
+  if(NULL == curr_dir){printf("oi"); return 1;} 
    
   dp = opendir((const char*)curr_dir);    
-  if(NULL == dp){return 0;} 
+  if(NULL == dp){printf("oi"); return 0;} 
  
   if (args[1] == NULL) {
     for(count = 0; NULL != (dptr = readdir(dp)); count++) 
@@ -258,7 +260,7 @@ int cli_ls(char **args)
     printf("\n");
   }
   else if (strcmp(args[1],"-l")==0) {
-    long_listing(".");
+    long_listing(curr_dir);
   }
   else if (strcmp(args[1],"-a")==0)
   {
@@ -341,13 +343,20 @@ int cli_execute(char **args)
   //return cli_launch(args);
 }
 
-int serv_execute(char *args)
+int serv_execute(char type, char data[32])
 {
-  unsigned char type = args[0];
-
-  if(type==ls) serv_ls(&args);
-  else if(type==cd) serv_cd(&args);
-
+  char* args[2];
+  args[0] = malloc(sizeof(char)*3);
+  args[1] = malloc(sizeof(char)*33);
+  if(type == ls)strcpy(args[0], "ls");
+  else if(type == cd)strcpy(args[0], "cd");
+  strcpy(args[1], data);
+  if(type==ls)
+  {
+    printf("op\n");
+    cli_ls(args);
+  }
+  else if(type==cd) serv_cd(args);
   return 1;
   //return cli_launch(args);
 }
@@ -457,19 +466,32 @@ void cli_loop(void)
 void serv_loop(void)
 {
   int i;
-  unsigned char size, seq, type;
-  unsigned char *data;
+  unsigned char size, seq, type, pair;
+  unsigned char data[32];
   while(listen(rsocket,2)) {
     FD_ZERO(&condicao); //socket vazio
-    recv(rsocket, received, 36, 0);
+    recv(rsocket, received, 37, 0);
     if(received[0] == init) {
       size = organizer(5, 0, received[1]);
       seq = organizer(0, 3, received[1]);
       seq |= organizer(3, 0, received[2]);
-      type = 0x7;//organizer(0, 5, received[2]);
-      data = malloc(sizeof(char)*(int)size);
-      data = '\0';
-      serv_execute(&type);
+      type = organizer(0, 5, received[2]);
+      for (; i < size; ++i)
+      {
+        data[i] = received[3 + i];
+      }
+      pair = 0;
+      pair |= received[1];
+      pair |= received[2];
+      for (int j = 0; j < size; ++j)
+      {
+        pair |= data[j];
+      }
+      if (pair != received[3 + i])
+      {
+        printf("pairing error\n");
+      }
+      serv_execute(type, data);
     }
     else {
       //packet(NULL, NULL); //envia nack
@@ -478,7 +500,7 @@ void serv_loop(void)
   }
 }
 
-
+//todo: limpar buffer + checar o arg[1] do ls
 int ConexaoRawSocket(char *device)
 {
   int soquete;
@@ -544,15 +566,15 @@ int main(int argc, char **argv)
   }
 
   /* Cria o socket e o liga a interface */
-
-//   if((rsocket = ConexaoRawSocket("localhost")) < 0){
-//   if(rsocket==-1) {
-//     fprintf(stderr, "Erro ao abrir o raw socket (não é root).\n");
-//     system("sudo su");
-//  }
-//   exit(-1);
-// }
-
+  if((rsocket = ConexaoRawSocket("eno1")) < 0){
+    if(rsocket==-1) 
+    {
+      fprintf(stderr, "Erro ao abrir o raw socket (não é root).\n");
+      system("sudo su");
+    }
+    exit(-1);
+  }
+  
   /* Cria o terminal */
 
   if(mode == 0) {
