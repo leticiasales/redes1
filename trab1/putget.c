@@ -43,6 +43,7 @@ const unsigned char init = 0x7E;
 const unsigned char ack = 0x0;
 const unsigned char size = 0x2;
 const unsigned char ok = 0x3;
+const unsigned char ultimo = 0x4;
 const unsigned char cd = 0x6;
 const unsigned char ls = 0x7;
 const unsigned char get = 0x8;
@@ -105,13 +106,20 @@ void packet(unsigned char ret[37], bloco msg)
   {
     ret[3 + i] = msg.data[i];
   }
-  ret[3 + i] = 0;
-  ret[3 + i] |= ret[1];
-  ret[3 + i] |= ret[2];
-  for (int j = 0; j < msg.size; ++j)
+  ret[3 + i] = pairing(ret[1], ret[2], msg.data, msg.size)
+}
+
+unsigned char pairing(unsigned char arg1, unsigned char arg2, unsigned char data[32], unsigned char size) 
+{
+	unsigned char ret;
+  ret = 0;
+  ret |= arg1;
+  ret |= arg2;
+  for (int j = 0; j < size; ++j)
   {
-    ret[3 + i] |= msg.data[j];
+    ret |= data[j];
   }
+  return ret;
 }
 
 void topack()
@@ -294,16 +302,16 @@ void cli_get (int rsocket, char **args)
 	packet(dados, msg);
 
 	write(rsocket, dados, msg.size+4); 
-	int test = wait_timeout_client(rsocket, dados, msg.size); 
+	int test = wait_timeout_c
+	lient(rsocket, dados, msg.size); 
 
 	if(test == 0) {
 		return;
 	}
 	
-	if (!(file = fopen (arquivo, "wb"))) {
+	if (!(file = fopen(arquivo, "wb"))) {
 		fprintf(stderr, "Não foi possível criar o arquivo\n");
 		// mensagem de erro
-
 		msg.size = 1;
 		msg.seq = 0;
 		msg.type = erro;
@@ -313,80 +321,74 @@ void cli_get (int rsocket, char **args)
 		return;
 	}
 
-	flag_g=0;
-	while(flag_g==0) { // pega tamanho do arquivo
-		recv(rsocket,received,msg.size,0);
-		if(received[0]==INICIO) {
-			tipo = received[2] & 63; //
-			if(tipo==TAMANHO) {
-				tamanho = 0;
-				tamanho = received[1] >> 2;
-				printf("%d\n",tamanho);
-				paridade = 0;
-				if (paridade == received[y]) { //
-					msg.size = 0;
-					msg.sez = 0;
-					msg.type = ack;
-					msg.data[0] = NULL;
-					packet(dados, msg);
-					//criaMensagem(NULL, dados, 0, 0, ACK);
-					write(rsocket, dados, msg.size+4);
-					flag_g = 1;
-				}	
-				else {
-					msg.size = 0;
-					msg.seq = 0;
-					msg.type = nack;
-					msg.data = NULL;
-					packet(dados, msg);
-					//criaMensagem(NULL, dados, 0, 0, NACK);
-					write(rsocket, dados, msg.size+4); 
-				}
-			}
-		}
-	}
-	
-	// recebe o arquivo
-	recv(rsocket,received,67,0);
-	while(1) {
-		if(received[0]==init) {
+	flag_g = 0;
 
-    if(received[0] == init) 
-    {
+	recv(rsocket, received, 67, 0);
+	if(received[0] == init) {
 		size = organizer(5, 0, received[1]);
 		seq = organizer(0, 3, received[1]);
 		seq |= organizer(3, 0, received[2]);
 		type = organizer(0, 5, received[2]);
-		if(tipo==DADOS) {
-			tipo = 0;
-			tipo = received[2] & 63; //
-			if(tipo == FIM)
-			{
-				criaMensagem(NULL, dados, 0, 0, ACK);
-				write(rsocket, dados, 67);
-				fclose(get);
-				return;
-			}
-			paridade = 0;
-			for (y=1; y<3+tamanho; y++) {
-				paridade ^= received[y];
-			}
-			if (paridade == received[y]) {
-				for(y=0;y<tamanho;y++) {
-					buffer[y] = received[3+y];	
-				}
-				fwrite(buffer,1,tamanho,get);
-				criaMensagem(NULL, dados, 0, 0, ACK);
-				write(rsocket, dados, 67);
-			}
-			else {
-				printf("Erro na paridade\n");
-				criaMensagem(NULL, dados, 0, 0, NACK);
-				write(rsocket, dados, 67);
-			}
+		for (int i = 0; i < size; ++i)
+		{
+			data[i] = received[3 + i];
+		}
+		pair = received[size + 3];
+		if (pair == pairing(received[1], received[2], data, size))
+		{
+			msg.size = 0;
+			msg.seq = 0;
+			msg.type = ack;
+			msg.data[0] = NULL;
+			packet(dados, msg);
+			write(rsocket, dados, msg.size+4);
+		}	
+		else
+		{
+			msg.size = 0;
+			msg.seq = 0;
+			msg.type = nack;
+			msg.data[0] = NULL;
+			packet(dados, msg);
+			write(rsocket, dados, msg.size+4); 
 		}
 	}
-	recv(rsocket,received,67,0);
+	
+	// recebe o arquivo
+	//recv(rsocket, received, 67, 0);
+	while(seq != ultimo)
+	{
+		recv(rsocket, received, 67, 0);
+		if(received[0] == init) 
+		{
+			size = organizer(5, 0, received[1]);
+			seq = organizer(0, 3, received[1]);
+			seq |= organizer(3, 0, received[2]);
+			type = organizer(0, 5, received[2]);
+			for (int i = 0; i < size; ++i)
+			{
+				data[i] = received[3 + i];
+			}
+			pair = received[size + 3];
+			if (pair == pairing(received[1], received[2], data, size))
+			{
+				msg.size = 0;
+				msg.seq = 0;
+				msg.type = ack;
+				msg.data[0] = NULL;
+				packet(dados, msg);
+				write(rsocket, dados, msg.size+4);
+			}	
+			else
+			{
+				msg.size = 0;
+				msg.seq = 0;
+				msg.type = nack;
+				msg.data[0] = NULL;
+				packet(dados, msg);
+				write(rsocket, dados, msg.size+4); 
+			}
+		}
 	}
 }
 

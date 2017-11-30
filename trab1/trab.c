@@ -114,6 +114,19 @@ void packet(unsigned char ret[37], bloco msg)
   }
 }
 
+unsigned char pairing(unsigned char arg1, unsigned char arg2, unsigned char data[32], unsigned char size) 
+{
+  unsigned char ret;
+  ret = 0;
+  ret |= arg1;
+  ret |= arg2;
+  for (int j = 0; j < size; ++j)
+  {
+    ret |= data[j];
+  }
+  return ret;
+}
+
 void topack()
 {
   bloco meubloco;
@@ -201,6 +214,7 @@ int serv_ls(char **args) {
     dados.size = strlen(args[1]);
     strcpy(dados.data, args[1]);
   }
+  printf("%c\n", dados.type);
   //else dados.data = NULL;
   packet(msg, dados);
   send(rsocket, msg, dados.size + 4, 0);
@@ -341,6 +355,7 @@ int serv_execute(char type, char data[32])
   if(type == ls)strcpy(args[0], "ls");
   else if(type == cd)strcpy(args[0], "cd");
   strcpy(args[1], data);
+  printf("teste\n");
   if(type==ls)
   {
     printf("op\n");
@@ -458,10 +473,11 @@ void serv_loop(void)
   int i;
   unsigned char size, seq, type, pair;
   unsigned char data[32];
-  while(listen(rsocket,2)) {
+  while(listen(rsocket, 37)) {
     FD_ZERO(&condicao); //socket vazio
     recv(rsocket, received, 37, 0);
     if(received[0] == init) {
+      printf("%s\n", received);
       size = organizer(5, 0, received[1]);
       seq = organizer(0, 3, received[1]);
       seq |= organizer(3, 0, received[2]);
@@ -470,13 +486,7 @@ void serv_loop(void)
       {
         data[i] = received[3 + i];
       }
-      pair = 0;
-      pair |= received[1];
-      pair |= received[2];
-      for (int j = 0; j < size; ++j)
-      {
-        pair |= data[j];
-      }
+      pair = pairing(received[1], received[2], data, size);
       if (pair != received[3 + i])
       {
         printf("pairing error\n");
@@ -484,6 +494,7 @@ void serv_loop(void)
       serv_execute(type, data);
     }
     else {
+      printf("nope: %d\n", i++);
       //packet(NULL, NULL); //envia nack
       // write(rsocket, data, 36);  
     }
@@ -556,14 +567,14 @@ int main(int argc, char **argv)
   }
 
   /* Cria o socket e o liga a interface */
-  //if((rsocket = ConexaoRawSocket("eno1")) < 0){
-  //  if(rsocket==-1) 
-  //  {
-  //    fprintf(stderr, "Erro ao abrir o raw socket (não é root).\n");
-  //    system("sudo su");
-  //  }
-  //  exit(-1);
-  //}
+  if((rsocket = ConexaoRawSocket("eth0")) < 0){
+   if(rsocket==-1) 
+   {
+     fprintf(stderr, "Erro ao abrir o raw socket (não é root).\n");
+     system("sudo su");
+   }
+   exit(-1);
+  }
   
   /* Cria o terminal */
 
