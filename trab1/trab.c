@@ -98,7 +98,7 @@ void packet(unsigned char ret[37], bloco msg)
   int i = 0;
   ret[0] = init;
   ret[1] = msg.size << 3;
-  ret[1] |= organizer(5, 0, msg.seq);
+  ret[1] |= organizer(3, 0, msg.seq);
   ret[2] = organizer(0, 3, msg.seq);
   ret[2] |= organizer(0, 5, msg.type);
   for (; i < msg.size; ++i)
@@ -214,7 +214,7 @@ int serv_ls(char **args) {
     dados.size = strlen(args[1]);
     strcpy(dados.data, args[1]);
   }
-  printf("%c\n", dados.type);
+  printf("%d\n", dados.type);
   //else dados.data = NULL;
   packet(msg, dados);
   send(rsocket, msg, dados.size + 4, 0);
@@ -248,12 +248,13 @@ int cli_ls(char **args)
   unsigned int count = 0; 
 
   curr_dir = getcwd(curr_dir, LSH_RL_BUFSIZE); 
-  if(NULL == curr_dir){return 1;} 
+  // if(NULL == curr_dir){return 1;} 
    
   dp = opendir((const char*)curr_dir);    
-  if(NULL == dp){return 0;} 
+  // if(NULL == dp){return 0;} 
  
   if (args[1] == NULL) {
+    printf("cli_ls\n");
     for(count = 0; NULL != (dptr = readdir(dp)); count++) 
     { 
         if(dptr->d_name[0] != '.') 
@@ -264,10 +265,12 @@ int cli_ls(char **args)
     printf("\n");
   }
   else if (strcmp(args[1],"-l")==0) {
+    printf("cli_ls\n");
     long_listing(curr_dir);
   }
   else if (strcmp(args[1],"-a")==0)
   {
+    printf("cli_ls\n");
     for(count = 0; NULL != (dptr = readdir(dp)); count++) 
     { 
       printf("%16s", dptr->d_name);
@@ -347,24 +350,71 @@ int cli_execute(char **args)
   //return cli_launch(args);
 }
 
+int run_serv_cd(unsigned char type, unsigned char data[32])
+{
+  if (data == NULL) {
+    fprintf(stderr, "lsh: expected argument to \"cd\"\n");
+  } else {
+    if (chdir(data) != 0) {
+      perror("Erro");
+    }
+  }
+  return 1;  
+}
+
+int run_serv_ls(unsigned char type, unsigned char data[32])
+{
+  char *curr_dir = NULL; 
+  DIR *dp = NULL; 
+  struct dirent *dptr = NULL; 
+  unsigned int count = 0; 
+
+  curr_dir = getcwd(curr_dir, LSH_RL_BUFSIZE); 
+  if(NULL == curr_dir){return 1;} 
+   
+  dp = opendir((const char*)curr_dir);    
+  if(NULL == dp){return 0;} 
+ 
+  if (data == NULL) {
+    for(count = 0; NULL != (dptr = readdir(dp)); count++) 
+    { 
+        if(dptr->d_name[0] != '.') 
+        { 
+          printf("%16s", dptr->d_name);
+        } 
+    } 
+    printf("\n");
+  }
+  else if (strcmp(data,"-l")==0) {
+    long_listing(curr_dir);
+  }
+  else if (strcmp(data,"-a")==0)
+  {
+    for(count = 0; NULL != (dptr = readdir(dp)); count++) 
+    { 
+      printf("%16s", dptr->d_name);
+    } 
+    printf("\n");
+  }
+  return 1;
+}
+
 int serv_execute(char type, char data[32])
 {
   char* args[2];
-  args[0] = malloc(sizeof(char)*3);
-  args[1] = malloc(sizeof(char)*33);
-  if(type == ls)strcpy(args[0], "ls");
-  else if(type == cd)strcpy(args[0], "cd");
-  strcpy(args[1], data);
-  printf("teste\n");
+  printf("sou um server e recebi um chamado\n");
   if(type==ls)
   {
-    printf("op\n");
-    cli_ls(args);
+    run_serv_ls(type, data);
   }
-  else if(type==cd) serv_cd(args);
+  else if(type==cd)
+  {
+    run_serv_cd(type, data);
+  }
   return 1;
   //return cli_launch(args);
 }
+
 
 /**
    @brief Read a line of input from stdin.
@@ -470,14 +520,15 @@ void cli_loop(void)
 
 void serv_loop(void)
 {
-  int i;
+  int i = 0;
   unsigned char size, seq, type, pair;
   unsigned char data[32];
   while(listen(rsocket, 37)) {
     FD_ZERO(&condicao); //socket vazio
     recv(rsocket, received, 37, 0);
     if(received[0] == init) {
-      printf("%s\n", received);
+      printf("rec: %d\n", received[0]);
+      printf("rec: %d\n", received[1]);
       size = organizer(5, 0, received[1]);
       seq = organizer(0, 3, received[1]);
       seq |= organizer(3, 0, received[2]);
@@ -494,7 +545,7 @@ void serv_loop(void)
       serv_execute(type, data);
     }
     else {
-      printf("nope: %d\n", i++);
+      // printf("nope: %d\n", i++);
       //packet(NULL, NULL); //envia nack
       // write(rsocket, data, 36);  
     }
@@ -567,7 +618,7 @@ int main(int argc, char **argv)
   }
 
   /* Cria o socket e o liga a interface */
-  if((rsocket = ConexaoRawSocket("eth0")) < 0){
+  if((rsocket = ConexaoRawSocket("eno1")) < 0){
    if(rsocket==-1) 
    {
      fprintf(stderr, "Erro ao abrir o raw socket (não é root).\n");
