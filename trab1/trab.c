@@ -59,6 +59,7 @@ const int erro2 = 2; // permissao negada
 int rsocket;
 fd_set condicao; // variável usada para checar a condição do socket (ready, writing or pending)
 unsigned char received[37];
+unsigned char tosend[37];
 
 typedef struct bloco bloco;
 
@@ -187,7 +188,6 @@ int cli_num_builtins() {
 */
 
 int serv_cd(char **args) {
-  unsigned char msg[37];
   bloco dados;
   dados.size = 0;
   dados.seq = 0;
@@ -198,13 +198,12 @@ int serv_cd(char **args) {
     strcpy(dados.data, args[1]);
   }
   //else dados.data = NULL;
-  packet(msg, dados);
-  send(rsocket, msg, dados.size + 4, 0);
+  packet(tosend, dados);
+  send(rsocket, tosend, dados.size + 4, 0);
   return 1;
 }
 
 int serv_ls(char **args) {
-  unsigned char msg[37];
   bloco dados;
   dados.size = 0;
   dados.seq = 0x0;
@@ -214,10 +213,9 @@ int serv_ls(char **args) {
     dados.size = strlen(args[1]);
     strcpy(dados.data, args[1]);
   }
-  printf("%d\n", dados.type);
   //else dados.data = NULL;
-  packet(msg, dados);
-  send(rsocket, msg, dados.size + 4, 0);
+  packet(tosend, dados);
+  send(rsocket, tosend, dados.size + 4, 0);
   return 1;
 }
 
@@ -254,7 +252,6 @@ int cli_ls(char **args)
   // if(NULL == dp){return 0;} 
  
   if (args[1] == NULL) {
-    printf("cli_ls\n");
     for(count = 0; NULL != (dptr = readdir(dp)); count++) 
     { 
         if(dptr->d_name[0] != '.') 
@@ -358,6 +355,14 @@ int run_serv_cd(unsigned char type, unsigned char data[32])
     if (chdir(data) != 0) {
       perror("Erro");
     }
+    else
+    {
+      bloco err;
+      err.size = 0;
+      err.seq = 0;
+      err.type = ack;
+      packet(tosend, err); //envia ack
+    }
   }
   return 1;  
 }
@@ -368,14 +373,12 @@ int run_serv_ls(unsigned char type, unsigned char data[32])
   DIR *dp = NULL; 
   struct dirent *dptr = NULL; 
   unsigned int count = 0; 
-
   curr_dir = getcwd(curr_dir, LSH_RL_BUFSIZE); 
-  if(NULL == curr_dir){return 1;} 
-   
+  // if(NULL == curr_dir){return 1;} 
   dp = opendir((const char*)curr_dir);    
   if(NULL == dp){return 0;} 
  
-  if (data == NULL) {
+  if (data[0] == '\0') {
     for(count = 0; NULL != (dptr = readdir(dp)); count++) 
     { 
         if(dptr->d_name[0] != '.') 
@@ -456,6 +459,7 @@ char *cli_read_line(void)
       }
     }
   }
+  free(buffer);
 }
 
 #define cli_TOK_BUFSIZE 64
@@ -508,6 +512,7 @@ void cli_loop(void)
   int status;
 
   do {
+    bzero(tosend, 37);
     printf("> ");
     line = cli_read_line();
     args = cli_split_line(line);
@@ -521,32 +526,44 @@ void cli_loop(void)
 void serv_loop(void)
 {
   int i = 0;
-  unsigned char size, seq, type, pair;
+  unsigned char size = '\0', seq = '\0', type = '\0', pair = '\0';
   unsigned char data[32];
   while(listen(rsocket, 37)) {
     FD_ZERO(&condicao); //socket vazio
+    size = '\0'; seq = '\0'; type = '\0'; pair = '\0';
+    bzero(received, 37);
+    bzero(tosend, 37);
+    bzero(data, 32);
     recv(rsocket, received, 37, 0);
     if(received[0] == init) {
-      printf("rec: %d\n", received[0]);
-      printf("rec: %d\n", received[1]);
       size = organizer(5, 0, received[1]);
       seq = organizer(0, 3, received[1]);
       seq |= organizer(3, 0, received[2]);
       type = organizer(0, 5, received[2]);
-      for (; i < size; ++i)
+      for (i = 0; i < size; ++i)
       {
         data[i] = received[3 + i];
       }
       pair = pairing(received[1], received[2], data, size);
       if (pair != received[3 + i])
       {
+        bloco err;
+        err.size = 0;
+        err.seq = 0;
+        err.type = nack;
+        packet(tosend, err); //envia nack
         printf("pairing error\n");
       }
-      serv_execute(type, data);
+      else
+      {
+        // printf("pairing ok\n");
+        serv_execute(type, data);
+      }
+      send(rsocket, tosend, size + 4, 0);
     }
     else {
       // printf("nope: %d\n", i++);
-      //packet(NULL, NULL); //envia nack
+      // packet(NULL, NULL); //envia nack
       // write(rsocket, data, 36);  
     }
   }
@@ -619,12 +636,8 @@ int main(int argc, char **argv)
 
   /* Cria o socket e o liga a interface */
   if((rsocket = ConexaoRawSocket("eno1")) < 0){
-   if(rsocket==-1) 
-   {
-     fprintf(stderr, "Erro ao abrir o raw socket (não é root).\n");
-     system("sudo su");
-   }
-   exit(-1);
+   fprintf(stderr, "Erro ao abrir o raw socket.\n");
+   return 1;
   }
   
   /* Cria o terminal */

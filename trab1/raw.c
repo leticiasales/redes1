@@ -34,7 +34,7 @@ void main(int argc, char *argv[]) {
 	uint8_t paridade;
 	uint8_t tamanho;
 	int flag_r, flag_g;
-	fd_set condicao; // variável usada para checar a condição do socket (ready,writing, ou pending)
+	fd_set condicao; // variável usada para checar a condição do socket (ready, writing, ou pending)
 	/* Seleção da interface */
 
 	/* Verifica entradas */
