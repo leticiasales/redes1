@@ -1,14 +1,7 @@
 /***************************************************************************
-  @author       Stephen Brennan
-  @date         Thursday,  8 January 2015
-  @brief        LSH (Libstephen SHell)
-
-  @adapted by Leticia Sales and Matheus Lima
+  by Leticia Sales and Matheus Lima
 ****************************************************************************/
-#ifndef MY_HEADER_FILE_
-#define MY_HEADER_FILE_
 
-// here is your header file code
 #include <arpa/inet.h>
 #include <dirent.h>
 #include <errno.h>
@@ -35,8 +28,6 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
-
-#endif
 
 
 #define LSH_RL_BUFSIZE 1024
@@ -237,17 +228,16 @@ void long_listing(char* fname)
 
 int cli_ls(char **args)
 {
-  printf("args[1] = %s\n", args[1]);
   char *curr_dir = NULL; 
   DIR *dp = NULL; 
   struct dirent *dptr = NULL; 
   unsigned int count = 0; 
 
   curr_dir = getcwd(curr_dir, LSH_RL_BUFSIZE); 
-  if(NULL == curr_dir){printf("oi"); return 1;} 
+  if(NULL == curr_dir){return 1;} 
    
   dp = opendir((const char*)curr_dir);    
-  if(NULL == dp){printf("oi"); return 0;} 
+  if(NULL == dp){return 0;} 
  
   if (args[1] == NULL) {
     for(count = 0; NULL != (dptr = readdir(dp)); count++) 
@@ -566,14 +556,14 @@ int main(int argc, char **argv)
   }
 
   /* Cria o socket e o liga a interface */
-  if((rsocket = ConexaoRawSocket("eno1")) < 0){
-    if(rsocket==-1) 
-    {
-      fprintf(stderr, "Erro ao abrir o raw socket (não é root).\n");
-      system("sudo su");
-    }
-    exit(-1);
-  }
+  //if((rsocket = ConexaoRawSocket("eno1")) < 0){
+  //  if(rsocket==-1) 
+  //  {
+  //    fprintf(stderr, "Erro ao abrir o raw socket (não é root).\n");
+  //    system("sudo su");
+  //  }
+  //  exit(-1);
+  //}
   
   /* Cria o terminal */
 
@@ -589,4 +579,3 @@ int main(int argc, char **argv)
   // Perform any shutdown/cleanup.
   return 1;
 }
-
