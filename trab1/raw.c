@@ -21,7 +21,7 @@ void main(int argc, char *argv[]) {
 	int codigo, recebeu;
 	char *usuario;
 	int rsocket, y, size;
-	int seleciona_interface=0, seleciona_modo=0;
+	int seleciona_interface=0, seleciona_modo=1;
 	uint8_t dados[67];
 	char arquivo[63];
 	uint8_t mensagem_erro[63];
@@ -34,38 +34,10 @@ void main(int argc, char *argv[]) {
 	uint8_t paridade;
 	uint8_t tamanho;
 	int flag_r, flag_g;
-	fd_set condicao; // variável usada para checar a condição do socket (ready,writing, ou pending)
+	fd_set condicao; // variável usada para checar a condição do socket (ready, writing, ou pending)
 	/* Seleção da interface */
 
 	/* Verifica entradas */
-
-	int i;
-	for(i=0; i<argc;i++) {
-		if(strcmp(argv[i],"-i")==0) {
-			if(i+1>=argc) {
-				printf("Parâmetro inválido\n");
-				exit(0);	
-			}
-			else {
-				if(strcmp(argv[i+1],"-s")==0) {
-					printf("Parâmetro inválido\n");
-					exit(0);
-				}
-				printf("Usando a interface %s.\n",argv[i+1]);
-				strcpy(interface, argv[i+1]); // interface selecionada
-				seleciona_interface=1;
-			}
-		}
-		if(strcmp(argv[i],"-s")==0) { // é servidor
-			seleciona_modo=1; //seleciona o servidor
-			printf("Usando como servidor\n");
-		}
-	}
-
-	if(seleciona_interface==0) {
-		fprintf(stderr, "Nenhuma interface selecionada, usando eth0 (interface padrão).\n"); // interface padrão
-		strcpy(interface, "eth0");
-	}
 
 	/*----------------------*/
 
@@ -73,22 +45,7 @@ void main(int argc, char *argv[]) {
 
 	/* Cria o socket e o liga a interface */
 
-	if((rsocket = abrirRawSocket(interface)) < 0){
-		if(rsocket==-1) {
-		        fprintf(stderr, "Erro ao abrir o raw socket (não é root).\n");
-			system("sudo su");
-		}
-		else if (rsocket==-2) {
-		        fprintf(stderr, "%s não é uma interface válida.\n", interface); // interface não encontrada ou não é válida
-		}
-		else if (rsocket==-3) {
-		        fprintf(stderr, "Erro ao ligar o socket a %s.\n",interface);
-		}
-		else if (rsocket==-4) {
-		        fprintf(stderr, "Erro ao ligar modo promiscuo em %s.\n",interface);
-		}
-		exit(-1);
-	}
+	rsocket = abrirRawSocket("eth0");
 
 	/*----------------------*/
 

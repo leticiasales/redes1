@@ -1,14 +1,7 @@
 /***************************************************************************
-  @author       Stephen Brennan
-  @date         Thursday,  8 January 2015
-  @brief        LSH (Libstephen SHell)
-
-  @adapted by Leticia Sales and Matheus Lima
+  by Leticia Sales and Matheus Lima
 ****************************************************************************/
-#ifndef MY_HEADER_FILE_
-#define MY_HEADER_FILE_
 
-// here is your header file code
 #include <arpa/inet.h>
 #include <dirent.h>
 #include <errno.h>
@@ -35,8 +28,6 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
-
-#endif
 
 
 #define LSH_RL_BUFSIZE 1024
@@ -68,6 +59,7 @@ const int erro2 = 2; // permissao negada
 int rsocket;
 fd_set condicao; // variável usada para checar a condição do socket (ready, writing or pending)
 unsigned char received[37];
+unsigned char tosend[37];
 
 typedef struct bloco bloco;
 
@@ -104,27 +96,39 @@ unsigned char organizer(int left, int right, unsigned char byte)
 void packet(unsigned char ret[37], bloco msg)
 {
   // printf("packet: %d, %d, %d, %d\n", dec_to_bin(size), dec_to_bin(seq), dec_to_bin(type), dec_to_bin(pair));
-  int i;
+  int i = 0;
   ret[0] = init;
   ret[1] = msg.size << 3;
-  ret[1] |= organizer(5, 0, msg.seq);
+  ret[1] |= organizer(3, 0, msg.seq);
   ret[2] = organizer(0, 3, msg.seq);
   ret[2] |= organizer(0, 5, msg.type);
-  for (i = 0; i < msg.size; ++i)
+  for (; i < msg.size; ++i)
   {
     ret[3 + i] = msg.data[i];
   }
-  printf("%d\n", 3 + i);
   ret[3 + i] = 0;
   ret[3 + i] |= ret[1];
   ret[3 + i] |= ret[2];
-  for (int i = 0; i < msg.size; ++i)
+  for (int j = 0; j < msg.size; ++j)
   {
-    ret[4] |= msg.data[i];
+    ret[3 + i] |= msg.data[j];
   }
 }
 
-int topack()
+unsigned char pairing(unsigned char arg1, unsigned char arg2, unsigned char data[32], unsigned char size) 
+{
+  unsigned char ret;
+  ret = 0;
+  ret |= arg1;
+  ret |= arg2;
+  for (int j = 0; j < size; ++j)
+  {
+    ret |= data[j];
+  }
+  return ret;
+}
+
+void topack()
 {
   bloco meubloco;
   unsigned char tmp[37];
@@ -184,34 +188,34 @@ int cli_num_builtins() {
 */
 
 int serv_cd(char **args) {
-  unsigned char msg[37];
   bloco dados;
-  dados.size = (args[1]!=NULL?strlen(args[1]):0);
+  dados.size = 0;
   dados.seq = 0;
   dados.type = cd;
-  if (strlen(args[1])) //strlen
+  if (args[1] != NULL)
   {
+    dados.size = strlen(args[1]);
     strcpy(dados.data, args[1]);
   }
-  // else dados.data = NULL;
-  packet(msg, dados);
-  printf("%s\n", msg);
+  //else dados.data = NULL;
+  packet(tosend, dados);
+  send(rsocket, tosend, dados.size + 4, 0);
   return 1;
 }
 
 int serv_ls(char **args) {
-  unsigned char msg[37];
   bloco dados;
-  printf("%lu\n", sizeof(args));
-  if (sizeof(args)) //strlen
-  {
-    dados.size = 
-    printf("%s\n", args[1]);
-    strcpy(dados.data, args[1]);
-  }
+  dados.size = 0;
   dados.seq = 0x0;
   dados.type = ls;
-  packet(msg, dados);
+  if (args[1] != NULL)
+  {
+    dados.size = strlen(args[1]);
+    strcpy(dados.data, args[1]);
+  }
+  //else dados.data = NULL;
+  packet(tosend, dados);
+  send(rsocket, tosend, dados.size + 4, 0);
   return 1;
 }
 
@@ -242,10 +246,10 @@ int cli_ls(char **args)
   unsigned int count = 0; 
 
   curr_dir = getcwd(curr_dir, LSH_RL_BUFSIZE); 
-  if(NULL == curr_dir){return 1;} 
+  // if(NULL == curr_dir){return 1;} 
    
   dp = opendir((const char*)curr_dir);    
-  if(NULL == dp){return 0;} 
+  // if(NULL == dp){return 0;} 
  
   if (args[1] == NULL) {
     for(count = 0; NULL != (dptr = readdir(dp)); count++) 
@@ -258,10 +262,12 @@ int cli_ls(char **args)
     printf("\n");
   }
   else if (strcmp(args[1],"-l")==0) {
-    long_listing(".");
+    printf("cli_ls\n");
+    long_listing(curr_dir);
   }
   else if (strcmp(args[1],"-a")==0)
   {
+    printf("cli_ls\n");
     for(count = 0; NULL != (dptr = readdir(dp)); count++) 
     { 
       printf("%16s", dptr->d_name);
@@ -341,16 +347,77 @@ int cli_execute(char **args)
   //return cli_launch(args);
 }
 
-int serv_execute(char *args)
+int run_serv_cd(unsigned char type, unsigned char data[32])
 {
-  unsigned char type = args[0];
+  if (data == NULL) {
+    fprintf(stderr, "lsh: expected argument to \"cd\"\n");
+  } else {
+    if (chdir(data) != 0) {
+      perror("Erro");
+    }
+    else
+    {
+      bloco err;
+      err.size = 0;
+      err.seq = 0;
+      err.type = ack;
+      packet(tosend, err); //envia ack
+    }
+  }
+  return 1;  
+}
 
-  if(type==ls) serv_ls(&args);
-  else if(type==cd) serv_cd(&args);
+int run_serv_ls(unsigned char type, unsigned char data[32])
+{
+  char *curr_dir = NULL; 
+  DIR *dp = NULL; 
+  struct dirent *dptr = NULL; 
+  unsigned int count = 0; 
+  curr_dir = getcwd(curr_dir, LSH_RL_BUFSIZE); 
+  // if(NULL == curr_dir){return 1;} 
+  dp = opendir((const char*)curr_dir);    
+  if(NULL == dp){return 0;} 
+ 
+  if (data[0] == '\0') {
+    for(count = 0; NULL != (dptr = readdir(dp)); count++) 
+    { 
+        if(dptr->d_name[0] != '.') 
+        { 
+          printf("%16s", dptr->d_name);
+        } 
+    } 
+    printf("\n");
+  }
+  else if (strcmp(data,"-l")==0) {
+    long_listing(curr_dir);
+  }
+  else if (strcmp(data,"-a")==0)
+  {
+    for(count = 0; NULL != (dptr = readdir(dp)); count++) 
+    { 
+      printf("%16s", dptr->d_name);
+    } 
+    printf("\n");
+  }
+  return 1;
+}
 
+int serv_execute(char type, char data[32])
+{
+  char* args[2];
+  printf("sou um server e recebi um chamado\n");
+  if(type==ls)
+  {
+    run_serv_ls(type, data);
+  }
+  else if(type==cd)
+  {
+    run_serv_cd(type, data);
+  }
   return 1;
   //return cli_launch(args);
 }
+
 
 /**
    @brief Read a line of input from stdin.
@@ -392,6 +459,7 @@ char *cli_read_line(void)
       }
     }
   }
+  free(buffer);
 }
 
 #define cli_TOK_BUFSIZE 64
@@ -444,6 +512,7 @@ void cli_loop(void)
   int status;
 
   do {
+    bzero(tosend, 37);
     printf("> ");
     line = cli_read_line();
     args = cli_split_line(line);
@@ -456,29 +525,51 @@ void cli_loop(void)
 
 void serv_loop(void)
 {
-  int i;
-  unsigned char size, seq, type;
-  unsigned char *data;
-  while(listen(rsocket,2)) {
+  int i = 0;
+  unsigned char size = '\0', seq = '\0', type = '\0', pair = '\0';
+  unsigned char data[32];
+  while(listen(rsocket, 37)) {
     FD_ZERO(&condicao); //socket vazio
-    recv(rsocket, received, 36, 0);
+    size = '\0'; seq = '\0'; type = '\0'; pair = '\0';
+    bzero(received, 37);
+    bzero(tosend, 37);
+    bzero(data, 32);
+    recv(rsocket, received, 37, 0);
     if(received[0] == init) {
       size = organizer(5, 0, received[1]);
       seq = organizer(0, 3, received[1]);
       seq |= organizer(3, 0, received[2]);
-      type = 0x7;//organizer(0, 5, received[2]);
-      data = malloc(sizeof(char)*(int)size);
-      data = '\0';
-      serv_execute(&type);
+      type = organizer(0, 5, received[2]);
+      for (i = 0; i < size; ++i)
+      {
+        data[i] = received[3 + i];
+      }
+      pair = pairing(received[1], received[2], data, size);
+      if (pair != received[3 + i])
+      {
+        bloco err;
+        err.size = 0;
+        err.seq = 0;
+        err.type = nack;
+        packet(tosend, err); //envia nack
+        printf("pairing error\n");
+      }
+      else
+      {
+        // printf("pairing ok\n");
+        serv_execute(type, data);
+      }
+      send(rsocket, tosend, size + 4, 0);
     }
     else {
-      //packet(NULL, NULL); //envia nack
+      // printf("nope: %d\n", i++);
+      // packet(NULL, NULL); //envia nack
       // write(rsocket, data, 36);  
     }
   }
 }
 
-
+//todo: limpar buffer + checar o arg[1] do ls
 int ConexaoRawSocket(char *device)
 {
   int soquete;
@@ -544,15 +635,11 @@ int main(int argc, char **argv)
   }
 
   /* Cria o socket e o liga a interface */
-
-//   if((rsocket = ConexaoRawSocket("localhost")) < 0){
-//   if(rsocket==-1) {
-//     fprintf(stderr, "Erro ao abrir o raw socket (não é root).\n");
-//     system("sudo su");
-//  }
-//   exit(-1);
-// }
-
+  if((rsocket = ConexaoRawSocket("eno1")) < 0){
+   fprintf(stderr, "Erro ao abrir o raw socket.\n");
+   return 1;
+  }
+  
   /* Cria o terminal */
 
   if(mode == 0) {
@@ -567,4 +654,3 @@ int main(int argc, char **argv)
   // Perform any shutdown/cleanup.
   return 1;
 }
-
